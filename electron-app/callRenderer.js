@@ -16,7 +16,7 @@ ipcRenderer.on('call-data', (event, data) => {
   otherUser = data.to || data.from;
   const isCaller = !!data.to;
 
-  ws = new WebSocket('https://357b-79-3-219-198.ngrok-free.app');
+  ws = new WebSocket('wss://357b-79-3-219-198.ngrok-free.app');
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'login', name: myName }));
