@@ -41,7 +41,8 @@ function logout() {
 }
 
 function connectWebSocket() {
-  ws = new WebSocket('ws://79.3.219.198:3000');
+ // ws = new WebSocket_('ws://79.3.219.198:3000');
+  ws = new WebSocket('https://357b-79-3-219-198.ngrok-free.app');
   // ws = new WebSocket('ws://localhost:3000');
 
   ws.onopen = () => {
