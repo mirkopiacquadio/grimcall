@@ -11,6 +11,9 @@ let myName = '';
 let otherUser = '';
 let ws;
 
+let remoteDescriptionSet = false;
+let candidateQueue = [];
+
 ipcRenderer.on('call-data', (event, data) => {
   myName = data.self;
   otherUser = data.to || data.from;
@@ -35,21 +38,38 @@ ipcRenderer.on('call-data', (event, data) => {
       case 'offer':
         console.log("📩 Ricevuta offer da:", data.from);
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        remoteDescriptionSet = true;
+
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         ws.send(JSON.stringify({ type: 'answer', answer, to: data.from }));
+
+        // Aggiungi candidati ricevuti in attesa
+        candidateQueue.forEach(c => pc.addIceCandidate(c));
+        candidateQueue = [];
+
         callStatus.innerText = '';
         break;
 
       case 'answer':
         console.log("✅ Answer ricevuta da:", data.from);
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        remoteDescriptionSet = true;
+
+        candidateQueue.forEach(c => pc.addIceCandidate(c));
+        candidateQueue = [];
+
         callStatus.innerText = '';
         break;
 
       case 'ice':
         console.log("❄️ ICE candidate ricevuto");
-        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+        const candidate = new RTCIceCandidate(data.candidate);
+        if (remoteDescriptionSet) {
+          pc.addIceCandidate(candidate);
+        } else {
+          candidateQueue.push(candidate);
+        }
         break;
     }
   };
@@ -57,26 +77,11 @@ ipcRenderer.on('call-data', (event, data) => {
 
 async function startCall(isCaller) {
   console.log("🚀 Avvio chiamata. Caller?", isCaller);
+
   pc = new RTCPeerConnection({
-    // iceServers: [
-    //   { urls: 'stun:stun.l.google.com:19302' },
-    //   {
-    //     urls: 'turn:openrelay.metered.ca:80',
-    //     username: 'openrelayproject',
-    //     credential: 'openrelayproject'
-    //   }
-    // ]
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' }
     ]
-    // iceServers: [
-    //   { urls: 'stun:stun.l.google.com:19302' },
-    //   {
-    //     urls: 'turn:openrelay.metered.ca:80',
-    //     username: 'openrelayproject',
-    //     credential: 'openrelayproject'
-    //   }
-    // ]
   });
 
   pc.onicecandidate = event => {
