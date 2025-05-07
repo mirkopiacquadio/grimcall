@@ -31,7 +31,11 @@ wss.on('connection', (ws) => {
         break;
 
       case 'accept':
+        console.log(`Accettata chiamata da: ${data.from}`);
+        console.log(`Utenti connessi:`, Object.keys(clients));
+
         if (clients[data.from]) {
+          console.log(`Invio 'call-accepted' a ${data.from}`);
           clients[data.from].ws.send(JSON.stringify({
             type: 'call-accepted',
             from: currentUser
@@ -39,6 +43,8 @@ wss.on('connection', (ws) => {
           clients[data.from].available = false;
           clients[currentUser].available = false;
           sendUserList();
+        } else {
+          console.warn(`⚠️ Nessun client con nome ${data.from}`);
         }
         break;
 
