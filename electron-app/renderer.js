@@ -61,6 +61,9 @@ function connectWebSocket() {
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
     
       document.getElementById('acceptCallBtn').onclick = () => {
+        console.log('TESTAAAA')
+        console.log(data.from)
+        console.log(myName)
         ws.send(JSON.stringify({ type: 'accept', from: data.from, to: myName }));
         ipcRenderer.send('open-call-window', { from: data.from, self: myName });
         document.getElementById('incomingCallPopup').style.display = 'none';
