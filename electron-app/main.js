@@ -53,6 +53,7 @@ app.whenReady().then(() => {
     callWin.loadFile(path.join(__dirname, 'callWindow.html'));
     callWin.webContents.once('did-finish-load', () => {
       callWin.webContents.send('call-data', callData);
+      callWin.webContents.openDevTools();
     });
   
     callWin.on('closed', () => {
