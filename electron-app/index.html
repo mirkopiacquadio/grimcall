@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>GrimCall - Totem</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Benvenuto su TotemCall</h1>
+    <div class="account-box">
+      <button id="logoutBtn" style="display: none;">🔚 Logout</button>
+      <button id="operatorLoginBtn" class="icon-button">👤</button>
+    </div>
+  </header>
+
+  <main id="loginView">
+    <div class="center-box">
+      <div id="operatorForm" style="display: none;">
+        <h2>Accedi al servizio</h2>
+        <input type="text" id="operatorNameInput" placeholder="Nome Operatore" />
+        <button onclick="loginAsOperator()">Accedi come Operatore</button>
+      </div>
+      <button onclick="loginAsGuest()">📞 VIDEOCHIAMA UN OPERATORE</button>
+    </div>
+  </main>
+
+  <main id="userListView" style="display: none;">
+    <h2 id="welcomeTitle"></h2>
+    <div id="operatorList" class="card-container"></div>
+  </main>
+
+  <div id="incomingCallPopup" class="popup" style="display: none;">
+    <div class="popup-content">
+      <h2>📞 Chiamata in arrivo</h2>
+      <p id="callerNameText"></p>
+      <button id="acceptCallBtn">✅ Accetta</button>
+      <button id="rejectCallBtn">❌ Rifiuta</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

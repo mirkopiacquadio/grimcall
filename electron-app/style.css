@@ -1,0 +1,181 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f2f2f2;
+  color: #333;
+  text-align: center;
+}
+
+header {
+  background: #003366;
+  color: white;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: white;
+  cursor: pointer;
+}
+
+.center-box {
+  margin-top: 60px;
+}
+
+input {
+  padding: 10px;
+  font-size: 16px;
+  width: 60%;
+  margin-bottom: 10px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  margin: 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 20px;
+}
+
+.user-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  width: 180px;
+  margin: 10px;
+  padding: 15px;
+  text-align: center;
+}
+
+.user-card img {
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+}
+
+.user-name {
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.user-status {
+  font-size: 14px;
+  margin: 5px 0;
+}
+
+.available {
+  color: green;
+}
+
+.unavailable {
+  color: gray;
+}
+
+.call-window {
+  background: black;
+  color: white;
+  margin: 0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+}
+
+.remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.local-video {
+  position: absolute;
+  width: 200px;
+  height: 150px;
+  top: 20px;
+  right: 20px;
+  border: 2px solid white;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.end-call-btn {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: red;
+  color: white;
+  font-size: 18px;
+  padding: 10px 30px;
+}
+
+.call-status {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 20px;
+  background: rgba(0,0,0,0.6);
+  padding: 10px 20px;
+  border-radius: 10px;
+}
+
+.account-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#logoutBtn {
+  font-size: 14px;
+  background-color: #eee;
+  color: #333;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+}
+
+.popup {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.popup-content button {
+  margin: 10px;
+  font-size: 16px;
+}

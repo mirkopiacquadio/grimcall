@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>GrimCall - Videochiamata</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="call-window">
+  <div class="call-status" id="callStatus">Sto chiamando l'operatore...</div>
+
+  <video id="remoteVideo" autoplay playsinline class="remote-video"></video>
+  <video id="localVideo" autoplay muted playsinline class="local-video"></video>
+
+  <button id="endCallBtn" class="end-call-btn">❌ Chiudi</button>
+
+  <script src="callRenderer.js"></script>
+</body>
+</html>

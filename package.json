@@ -1,0 +1,30 @@
+{
+  "name": "grimcall",
+  "version": "1.0.0",
+  "main": "electron-app/main.js",
+  "scripts": {
+    "start": "electron .",
+    "server": "node signaling-server/server.js",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "ws": "^8.15.1"
+  },
+  "devDependencies": {
+    "electron": "^29.1.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.grimcall.totem",
+    "productName": "GrimCall",
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{test,__tests__}/**",
+      "!**/*.md"
+    ]
+  }
+}
