@@ -75,6 +75,10 @@ function connectWebSocket() {
     if (data.type === 'call-rejected') {
       alert(`${data.from} ha rifiutato la chiamata`);
     }
+
+    if (data.type === 'call-accepted') {
+      ipcRenderer.send('call-data', { from: data.from, self: myName });
+    }
   };
   document.getElementById('logoutBtn').onclick = logout;
   document.getElementById('loginView').style.display = 'none';
