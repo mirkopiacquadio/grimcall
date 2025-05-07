@@ -31,6 +31,7 @@ wss.on('connection', (ws) => {
         break;
 
       case 'accept':
+        console.log('📩 ACCEPT ricevuto:', data);
         if (clients[data.from] && clients[data.to]) {
           clients[data.from].ws.send(JSON.stringify({
             type: 'call-accepted',
