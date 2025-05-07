@@ -77,6 +77,7 @@ function connectWebSocket() {
     }
 
     if (data.type === 'call-accepted') {
+      console.log('TEST')
       ipcRenderer.send('call-data', { from: data.from, self: myName });
     }
   };
