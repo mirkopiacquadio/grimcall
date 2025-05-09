@@ -20,7 +20,7 @@ ipcRenderer.on('call-data', (event, data) => {
   otherUser = data.to || data.from;
   isCaller = !!data.to;
   
-  ws = new WebSocket('ws://8c81-79-3-219-198.ngrok-free.app');
+  ws = new WebSocket('ws://f0ad-79-3-219-198.ngrok-free.app');
   // ws = new WebSocket('ws://localhost:3000');
 
   ws.onopen = () => {
