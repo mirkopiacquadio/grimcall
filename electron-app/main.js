@@ -19,10 +19,8 @@ function createMainWindow() {
 }
 
 function createCallWindow(data) {
-  callWindow = new BrowserWindow({
+  let callWindow = new BrowserWindow({
     fullscreen: true,
-    kiosk: false,
-    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
