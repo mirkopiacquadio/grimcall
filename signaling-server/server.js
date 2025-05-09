@@ -87,10 +87,22 @@ wss.on('connection', (ws) => {
 
 
       case 'bye':
+        console.log('📴 BYE ricevuto da:', currentUser);
+
         if (clients[currentUser]) {
           clients[currentUser].available = true;
-          sendUserList();
         }
+
+        // ✅ Avvisa l’altro utente che la chiamata è terminata
+        if (data.to && clients[data.to]) {
+          clients[data.to].ws.send(JSON.stringify({
+            type: 'call-ended',
+            from: currentUser
+          }));
+          clients[data.to].available = true;
+        }
+
+        sendUserList();
         break;
     }
   });
