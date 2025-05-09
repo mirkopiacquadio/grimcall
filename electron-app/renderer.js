@@ -134,6 +134,17 @@ function renderOperators(usersOnline) {
   });
 }
 
+function closeSocket() {
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+
+  setTimeout(() => {
+    connectWebSocket();
+  }, 500);
+}
+
 const welcomeTitle = document.getElementById("grimTitle");
 let welcomeClickCount = 0;
 
