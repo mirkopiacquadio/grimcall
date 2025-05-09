@@ -1,5 +1,5 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('path');
+import { app, BrowserWindow, ipcMain } from 'electron';
+import { join } from 'path';
 
 let mainWindow, callWindow;
 
@@ -9,26 +9,26 @@ function createMainWindow() {
     kiosk: false,
     frame: false,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: join(__dirname, 'preload.js'),
       nodeIntegration: true,
       contextIsolation: false
     }
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.loadFile(join(__dirname, 'index.html'));
 }
 
 function createCallWindow(data) {
   let callWindow = new BrowserWindow({
     fullscreen: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true
     }
   });
 
-  callWindow.loadFile(path.join(__dirname, 'callWindow.html'));
+  callWindow.loadFile(join(__dirname, 'callWindow.html'));
 
   callWindow.webContents.once('did-finish-load', () => {
     callWindow.webContents.send('call-data', data);
@@ -56,13 +56,13 @@ app.whenReady().then(() => {
     callWindow = new BrowserWindow({
       fullscreen: true,
       webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
+        preload: join(__dirname, 'preload.js'),
         nodeIntegration: true,
         contextIsolation: false
       }
     });
 
-    callWindow.loadFile(path.join(__dirname, 'callWindow.html'));
+    callWindow.loadFile(join(__dirname, 'callWindow.html'));
     callWindow.webContents.once('did-finish-load', () => {
       callWindow.webContents.send('call-data', callData);
       // callWindow.webContents.openDevTools();
