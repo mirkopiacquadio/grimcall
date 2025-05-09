@@ -6,7 +6,7 @@ let mainWindow, callWindow;
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     fullscreen: true,
-    kiosk: true,
+    kiosk: false,
     frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -14,14 +14,14 @@ function createMainWindow() {
       contextIsolation: false
     }
   });
-  mainWindow.webContents.openDevTools();
+
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
 function createCallWindow(data) {
   callWindow = new BrowserWindow({
     fullscreen: true,
-    kiosk: true,
+    kiosk: false,
     frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
