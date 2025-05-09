@@ -5,8 +5,9 @@ let mainWindow, callWindow;
 
 function createMainWindow() {
   const win = new BrowserWindow({
-    width: 1000,
-    height: 700,
+    fullscreen: true,
+    kiosk: true,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
@@ -20,6 +21,8 @@ function createMainWindow() {
 function createCallWindow(data) {
   callWindow = new BrowserWindow({
     fullscreen: true,
+    kiosk: true,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
