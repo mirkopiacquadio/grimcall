@@ -152,12 +152,19 @@ ipcRenderer.on('force-end-call', () => {
 });
 
 function endCall() {
-  if (pc) pc.close();
+  if (pc) {
+    pc.close();
+    pc = null; // ✅ Importante per forzare la creazione di una nuova connessione
+  }
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
+    localStream = null; // ✅ Rilascia il flusso locale
   }
-  if (ws) ws.send(JSON.stringify({ type: 'bye' }));
-  console.log("📞 Chiamata terminata.");
+  if (ws) {
+    ws.send(JSON.stringify({ type: 'bye' }));
+    ws.close();
+    ws = null; // ✅ Chiudi la WebSocket e rimuovi il riferimento
+  }
 }
 
 function pcRemoteDescriptionSet() {
