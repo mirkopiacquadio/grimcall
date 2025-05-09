@@ -111,9 +111,13 @@ async function startCall(isCaller) {
 
 endCallBtn.onclick = endCall;
 
-window.onbeforeunload = () => {
+// window.onbeforeunload = () => {
+//   endCall();
+// };
+
+ipcRenderer.on('force-end-call', () => {
   endCall();
-};
+});
 
 function endCall() {
   if (pc) pc.close();
@@ -121,4 +125,9 @@ function endCall() {
     localStream.getTracks().forEach(t => t.stop());
   }
   if (ws) ws.send(JSON.stringify({ type: 'bye' }));
+
+    // Chiudi la finestra correttamente
+    const remote = require('electron').remote;
+    const window = remote.getCurrentWindow();
+    window.close();
 }

@@ -31,6 +31,10 @@ function createCallWindow(data) {
     callWindow.webContents.send('call-data', data);
     callWindow.webContents.openDevTools();
   });
+
+  callWindow.on('close', () => {
+    callWindow.webContents.send('force-end-call');
+  });
 }
 
 app.whenReady().then(() => {
