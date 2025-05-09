@@ -43,6 +43,9 @@ function logout() {
   document.getElementById('loginView').style.display = 'block';
   document.getElementById('operatorForm').style.display = 'none';
   document.getElementById('logoutBtn').style.display = 'none';
+
+  // ✅ Riapertura WebSocket per permettere nuove chiamate
+  connectWebSocket();
 }
 
 function connectWebSocket() {
@@ -64,13 +67,13 @@ function connectWebSocket() {
     if (data.type === 'incoming-call' && isOperator) {
       document.getElementById('incomingCallPopup').style.display = 'flex';
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
-    
+
       document.getElementById('acceptCallBtn').onclick = () => {
         ws.send(JSON.stringify({ type: 'accept', from: data.from, to: myName }));
         ipcRenderer.send('open-call-window', { from: data.from, self: myName });
         document.getElementById('incomingCallPopup').style.display = 'none';
       };
-    
+
       document.getElementById('rejectCallBtn').onclick = () => {
         ws.send(JSON.stringify({ type: 'reject', from: data.from }));
         document.getElementById('incomingCallPopup').style.display = 'none';

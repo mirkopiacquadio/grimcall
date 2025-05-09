@@ -154,17 +154,26 @@ ipcRenderer.on('force-end-call', () => {
 function endCall() {
   if (pc) {
     pc.close();
-    pc = null; // ✅ Importante per forzare la creazione di una nuova connessione
+    pc = null;
   }
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
-    localStream = null; // ✅ Rilascia il flusso locale
+    localStream = null;
   }
   if (ws) {
-    ws.send(JSON.stringify({ type: 'bye' }));
+    ws.send(JSON.stringify({ type: 'bye', to: otherUser }));
     ws.close();
-    ws = null; // ✅ Chiudi la WebSocket e rimuovi il riferimento
+    ws = null;
   }
+
+  // ✅ Riconnetti WebSocket dopo fine chiamata (importante!)
+  setTimeout(() => {
+    ws = new WebSocket('wss://f0ad-79-3-219-198.ngrok-free.app');
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'login', name: myName }));
+    };
+    // Riattacca eventuali altri eventi su ws se necessari.
+  }, 500);
 }
 
 function pcRemoteDescriptionSet() {
