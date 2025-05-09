@@ -43,9 +43,6 @@ function logout() {
   document.getElementById('loginView').style.display = 'block';
   document.getElementById('operatorForm').style.display = 'none';
   document.getElementById('logoutBtn').style.display = 'none';
-
-  // ✅ Riapertura WebSocket per permettere nuove chiamate
-  connectWebSocket();
 }
 
 function connectWebSocket() {
