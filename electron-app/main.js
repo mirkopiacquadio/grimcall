@@ -18,7 +18,7 @@ function createMainWindow() {
 }
 
 function createCallWindow(data) {
-  let callWindow = new BrowserWindow({
+  callWindow = new BrowserWindow({
     fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -26,14 +26,15 @@ function createCallWindow(data) {
       contextIsolation: true
     }
   });
+
   callWindow.loadFile('callWindow.html');
   callWindow.webContents.once('did-finish-load', () => {
     callWindow.webContents.send('call-data', data);
-    callWindow.webContents.openDevTools();
+    // callWindow.webContents.openDevTools();
   });
 
   callWindow.on('close', () => {
-    callWindow.webContents.send('force-end-call');
+    callWindow = null;
   });
 }
 
@@ -45,7 +46,12 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('open-call-window', (event, callData) => {
-    let callWin = new BrowserWindow({
+    if (callWindow) {
+      callWindow.focus();
+      return;
+    }
+  
+    callWindow = new BrowserWindow({
       fullscreen: true,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
@@ -54,17 +60,18 @@ app.whenReady().then(() => {
       }
     });
   
-    callWin.loadFile(path.join(__dirname, 'callWindow.html'));
-    callWin.webContents.once('did-finish-load', () => {
-      callWin.webContents.send('call-data', callData);
-      callWin.webContents.openDevTools();
+    callWindow.loadFile(path.join(__dirname, 'callWindow.html'));
+  
+    callWindow.webContents.once('did-finish-load', () => {
+      callWindow.webContents.send('call-data', callData);
+      // callWindow.webContents.openDevTools();
     });
   
-    callWin.on('closed', () => {
-      callWin = null;
+    callWindow.on('closed', () => {
+      callWindow = null;
     });
   });
-
+  
   ipcMain.on('end-call', () => {
     if (callWindow) callWindow.close();
   });
@@ -76,4 +83,11 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
+});
+
+ipcMain.on('close-call-window', () => {
+  if (callWindow) {
+      callWindow.close();
+      callWindow = null;
+  }
 });

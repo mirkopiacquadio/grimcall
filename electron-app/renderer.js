@@ -41,9 +41,9 @@ function logout() {
 }
 
 function connectWebSocket() {
- // ws = new WebSocket_('ws://79.3.219.198:3000');
-  ws = new WebSocket('wss://b329-79-3-219-198.ngrok-free.app');
-  // ws = new WebSocket('ws://localhost:3000');
+
+  //ws = new WebSocket('wss://b329-79-3-219-198.ngrok-free.app');
+  ws = new WebSocket('ws://localhost:3000');
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'login', name: myName }));
@@ -61,9 +61,6 @@ function connectWebSocket() {
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
     
       document.getElementById('acceptCallBtn').onclick = () => {
-        console.log('TESTAAAA')
-        console.log(data.from)
-        console.log(myName)
         ws.send(JSON.stringify({ type: 'accept', from: data.from, to: myName }));
         ipcRenderer.send('open-call-window', { from: data.from, self: myName });
         document.getElementById('incomingCallPopup').style.display = 'none';
