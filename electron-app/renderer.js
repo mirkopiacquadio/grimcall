@@ -47,8 +47,8 @@ function logout() {
 
 function connectWebSocket() {
 
-  //ws = new WebSocket('wss://b329-79-3-219-198.ngrok-free.app');
-  ws = new WebSocket('ws://localhost:3000');
+  ws = new WebSocket('wss://8c81-79-3-219-198.ngrok-free.app');
+  // ws = new WebSocket('ws://localhost:3000');
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'login', name: myName }));
