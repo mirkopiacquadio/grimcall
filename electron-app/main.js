@@ -31,7 +31,7 @@ function createCallWindow(data) {
   callWindow.loadFile('callWindow.html');
   callWindow.webContents.once('did-finish-load', () => {
     callWindow.webContents.send('call-data', data);
-    // callWindow.webContents.openDevTools();
+    callWindow.webContents.openDevTools();
   });
 
   callWindow.on('close', () => {
