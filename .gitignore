@@ -39,11 +39,6 @@ __installer/
 *.tmp
 *.temp
 
-# Screenshots or media accidentally tracked
-*.png
-*.jpg
-*.jpeg
-
 # OS junk
 Thumbs.db
 ehthumbs.db
