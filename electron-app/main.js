@@ -45,7 +45,7 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('open-call-window', (event, callData) => {
-    const callWin = new BrowserWindow({
+    let callWin = new BrowserWindow({
       fullscreen: true,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
