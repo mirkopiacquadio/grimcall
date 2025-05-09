@@ -7,9 +7,14 @@ let operatorList = ['Mario Rossi', 'Laura Bianchi', 'Marco Neri', 'Giulia Verdi'
 
 document.getElementById('operatorLoginBtn').onclick = () => {
   const form = document.getElementById('operatorForm');
-  form.style.display = form.style.display === 'none' ? 'block' : 'none';
-};
+  const operatorLoginBtn = document.getElementById('operatorLoginBtn');
 
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+
+  if (form.style.display === 'none') {
+    operatorLoginBtn.style.display = 'none'; // ✅ Assegnazione corretta!
+  }
+};
 
 function loginAsOperator() {
   const name = document.getElementById('operatorNameInput').value.trim();
@@ -77,7 +82,6 @@ function connectWebSocket() {
     }
 
     if (data.type === 'call-accepted') {
-      console.log('TEST')
       ipcRenderer.send('call-data', { from: data.from, self: myName });
     }
   };
@@ -130,5 +134,18 @@ function renderOperators(usersOnline) {
   });
 }
 
+const welcomeTitle = document.getElementById("grimTitle");
+let welcomeClickCount = 0;
+
+welcomeTitle.onclick = () => {
+  welcomeClickCount++;
+  console.log(`👆 Click su Benvenuto: ${welcomeClickCount} / 15`);
+
+  if (welcomeClickCount >= 15) {
+    ipcRenderer.send("exit-kiosk");
+    welcomeClickCount = 0;
+    console.log("🚪 Uscita dalla modalità kiosk richiesta!");
+  }
+};
 
 module.exports = { myName, ws };

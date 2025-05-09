@@ -4,7 +4,7 @@ const path = require('path');
 let mainWindow, callWindow;
 
 function createMainWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     fullscreen: true,
     kiosk: true,
     frame: false,
@@ -14,8 +14,8 @@ function createMainWindow() {
       contextIsolation: false
     }
   });
-
-  win.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.webContents.openDevTools();
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
 function createCallWindow(data) {
@@ -53,7 +53,7 @@ app.whenReady().then(() => {
       callWindow.focus();
       return;
     }
-  
+
     callWindow = new BrowserWindow({
       fullscreen: true,
       webPreferences: {
@@ -62,19 +62,18 @@ app.whenReady().then(() => {
         contextIsolation: false
       }
     });
-  
+
     callWindow.loadFile(path.join(__dirname, 'callWindow.html'));
-  
     callWindow.webContents.once('did-finish-load', () => {
       callWindow.webContents.send('call-data', callData);
       // callWindow.webContents.openDevTools();
     });
-  
+
     callWindow.on('closed', () => {
       callWindow = null;
     });
   });
-  
+
   ipcMain.on('end-call', () => {
     if (callWindow) callWindow.close();
   });
@@ -90,7 +89,18 @@ app.on('window-all-closed', function () {
 
 ipcMain.on('close-call-window', () => {
   if (callWindow) {
-      callWindow.close();
-      callWindow = null;
+    callWindow.close();
+    callWindow = null;
+  }
+});
+
+ipcMain.on('exit-kiosk', () => {
+  if (mainWindow) {
+    mainWindow.close();
+    mainWindow = null;
+  }
+  if (callWindow) {
+    callWindow.close();
+    callWindow = null;
   }
 });
