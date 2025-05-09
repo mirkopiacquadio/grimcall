@@ -97,8 +97,25 @@ ipcRenderer.on('call-data', (event, data) => {
 async function startCall() {
   console.log("🚀 Avvio chiamata. Caller?", isCaller);
 
-  pc = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  // pc = new RTCPeerConnection({
+  //   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    
+  // });
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
+    ],
+    iceTransportPolicy: 'relay' // ✅ Questo forza l'uso del TURN
   });
 
   pc.onicecandidate = (event) => {
