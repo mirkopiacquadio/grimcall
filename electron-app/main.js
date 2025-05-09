@@ -6,7 +6,7 @@ let mainWindow, callWindow;
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     fullscreen: true,
-    kiosk: false,
+    kiosk: true,
     frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
