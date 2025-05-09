@@ -28,7 +28,7 @@ function createCallWindow(data) {
     }
   });
 
-  callWindow.loadFile('callWindow.html');
+  mainWindow.loadFile(path.join(__dirname, 'callWindow.html'));
   callWindow.webContents.once('did-finish-load', () => {
     callWindow.webContents.send('call-data', data);
     callWindow.webContents.openDevTools();
