@@ -20,7 +20,7 @@ ipcRenderer.on('call-data', (event, data) => {
   otherUser = data.to || data.from;
   isCaller = !!data.to;
   
-  ws = new WebSocket('wss://f0ad-79-3-219-198.ngrok-free.app');
+  ws = new WebSocket('wss://783c-79-3-219-198.ngrok-free.app');
   // ws = new WebSocket('ws://localhost:3000');
 
   ws.onopen = () => {
@@ -115,7 +115,7 @@ async function startCall() {
         credential: 'openrelayproject'
       }
     ],
-    iceTransportPolicy: 'relay' // ✅ Questo forza l'uso del TURN
+    iceTransportPolicy: 'relay' 
   });
 
   pc.onicecandidate = (event) => {
