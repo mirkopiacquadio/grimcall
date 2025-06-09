@@ -165,6 +165,8 @@ function endCall() {
     ws.close();
     ws = null; // ✅ Chiudi la WebSocket e rimuovi il riferimento
   }
+
+    ipcRenderer.send('call-ended'); 
 }
 
 function pcRemoteDescriptionSet() {

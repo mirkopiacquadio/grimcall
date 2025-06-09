@@ -7,9 +7,7 @@
   </head>
   <body>
     <header>
-      <h1>
-        Benvenuto su GRIM
-      </h1>
+      <h1>Benvenuto su GRIM</h1>
       <div class="account-box">
         <button id="logoutBtn" style="display: none">🔚 Logout</button>
         <button id="operatorLoginBtn" class="icon-button">👤</button>
@@ -43,10 +41,16 @@
 
     <footer class="app-footer">
       <p>
-        <span id="grimTitle">Prodotto</span> realizzato da 
+        <span id="grimTitle">Prodotto</span>
+        realizzato da
         <span id="ing" class="highlight-name">Ing. Piacquadio Mirko</span>
       </p>
     </footer>
+
+    <video id="screensaver" autoplay muted loop class="screensaver-video" style="display: none">
+      <source src="screensaver.mp4" type="video/mp4" />
+      Il tuo browser non supporta il video.
+    </video>
 
     <script src="renderer.js"></script>
     <script>

@@ -4,6 +4,14 @@ let ws;
 let myName = '';
 let isOperator = false;
 let operatorList = ['Mario Rossi', 'Laura Bianchi', 'Marco Neri', 'Giulia Verdi', 'Antonio Esposito'];
+let inactivityTimeout;
+const screensaver = document.getElementById("screensaver");
+let isInCall = false;
+
+ipcRenderer.on('call-ended', () => {
+  isInCall = false;
+  resetInactivityTimer();
+});
 
 document.getElementById('operatorLoginBtn').onclick = () => {
   const form = document.getElementById('operatorForm');
@@ -15,6 +23,22 @@ document.getElementById('operatorLoginBtn').onclick = () => {
     operatorLoginBtn.style.display = 'none'; // ✅ Assegnazione corretta!
   }
 };
+
+function resetInactivityTimer() {
+  clearTimeout(inactivityTimeout);
+  if (!isInCall) {
+    screensaver.style.display = "none";
+    inactivityTimeout = setTimeout(() => {
+      screensaver.style.display = "block";
+    }, 10000); // 10 secondi
+  }
+}
+
+['keydown', 'click', 'touchstart'].forEach(evt =>
+  window.addEventListener(evt, resetInactivityTimer)
+);
+
+resetInactivityTimer();
 
 function loginAsOperator() {
   const name = document.getElementById('operatorNameInput').value.trim();
@@ -64,13 +88,13 @@ function connectWebSocket() {
     if (data.type === 'incoming-call' && isOperator) {
       document.getElementById('incomingCallPopup').style.display = 'flex';
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
-    
+
       document.getElementById('acceptCallBtn').onclick = () => {
         ws.send(JSON.stringify({ type: 'accept', from: data.from, to: myName }));
         ipcRenderer.send('open-call-window', { from: data.from, self: myName });
         document.getElementById('incomingCallPopup').style.display = 'none';
       };
-    
+
       document.getElementById('rejectCallBtn').onclick = () => {
         ws.send(JSON.stringify({ type: 'reject', from: data.from }));
         document.getElementById('incomingCallPopup').style.display = 'none';
@@ -83,6 +107,8 @@ function connectWebSocket() {
 
     if (data.type === 'call-accepted') {
       ipcRenderer.send('call-data', { from: data.from, self: myName });
+      isInCall = true;
+      screensaver.style.display = "none";
     }
   };
   document.getElementById('logoutBtn').onclick = logout;

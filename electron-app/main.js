@@ -70,6 +70,9 @@ app.whenReady().then(() => {
 
     callWindow.on('closed', () => {
       callWindow = null;
+      if (mainWindow) {
+        mainWindow.webContents.send('call-ended');
+      }
     });
   });
 
@@ -90,6 +93,7 @@ ipcMain.on('close-call-window', () => {
   if (callWindow) {
     callWindow.close();
     callWindow = null;
+    mainWindow?.webContents.send('call-ended');
   }
 });
 
