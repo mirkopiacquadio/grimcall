@@ -31,26 +31,6 @@ ipcRenderer.on('call-data', (event, data) => {
     }
   };
 
-  function createPeerConnectionIfNeeded(target) {
-    if (!pc) {
-      pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          console.log("📤 Inviando ICE...");
-          ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: data.from }));
-        }
-      };
-
-      pc.ontrack = (event) => {
-        console.log('🎥 Ricevuto flusso remoto:', event.streams);
-        if (event.streams && event.streams[0]) {
-          remoteVideo.srcObject = event.streams[0];
-        }
-        callStatus.innerText = '';
-      };
-    }
-  }
-
   ws.onmessage = async (msg) => {
     let data;
     if (typeof msg.data === "string") {
@@ -130,6 +110,26 @@ async function ensureLocalStream() {
     } catch (err) {
       console.error("🎙️ Errore accesso dispositivi locali:", err);
     }
+  }
+}
+
+function createPeerConnectionIfNeeded(target) {
+  if (!pc) {
+    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log("📤 Inviando ICE...");
+        ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: data.from }));
+      }
+    };
+
+    pc.ontrack = (event) => {
+      console.log('🎥 Ricevuto flusso remoto:', event.streams);
+      if (event.streams && event.streams[0]) {
+        remoteVideo.srcObject = event.streams[0];
+      }
+      callStatus.innerText = '';
+    };
   }
 }
 
