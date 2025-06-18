@@ -146,33 +146,54 @@ function createPeerConnectionIfNeeded() {
 
 if (endCallBtn) {
   endCallBtn.onclick = () => {
-    endCall();
+    endCall(); // chiude peer/stream, manda bye
+    if (isCaller) {
+      // Il cliente chiude la WebSocket, fa logout
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+    }
+    ipcRenderer.send('call-ended');
     ipcRenderer.send('close-call-window');
   };
 }
 
 ipcRenderer.on('force-end-call', () => {
   endCall();
+  if (isCaller) {
+    // Il cliente chiude la WebSocket, fa logout
+    if (ws) {
+      ws.close();
+      ws = null;
+    }
+  }
+  ipcRenderer.send('call-ended');
+  ipcRenderer.send('close-call-window');
 });
 
 function endCall() {
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-    localStream = null;
-  }
-  if (ws) {
-    console.log('TEST')
-    ws.send(JSON.stringify({ type: 'bye' }));
-    ws.close();
-    ws = null;
-  }
-
-  ipcRenderer.send('call-ended');
+  ws.send(JSON.stringify({ type: 'bye' }));
 }
+
+// function endCall() {
+//   if (pc) {
+//     pc.close();
+//     pc = null;
+//   }
+//   if (localStream) {
+//     localStream.getTracks().forEach(track => track.stop());
+//     localStream = null;
+//   }
+//   if (ws) {
+//     console.log('TEST')
+//     ws.send(JSON.stringify({ type: 'bye' }));
+//     ws.close();
+//     ws = null;
+//   }
+
+//   ipcRenderer.send('call-ended');
+// }
 
 function pcRemoteDescriptionSet() {
   return pc && pc.remoteDescription && pc.remoteDescription.type;
