@@ -10,7 +10,8 @@ let isInCall = false;
 
 ipcRenderer.on('call-ended', () => {
   isInCall = false;
-  document.getElementById("logoutBtn").click();
+  if(!isOperator) document.getElementById("logoutBtn").click();
+  else loginAsOperator();
   resetInactivityTimer();
 });
 
@@ -177,17 +178,6 @@ function renderOperators(usersOnline) {
 
     container.appendChild(card);
   });
-}
-
-function closeSocket() {
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
-
-  setTimeout(() => {
-    connectWebSocket();
-  }, 500);
 }
 
 const welcomeTitle = document.getElementById("grimTitle");
