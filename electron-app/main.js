@@ -10,11 +10,13 @@ function createMainWindow() {
     frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: true,           // ✅ necessario per contextBridge
+      nodeIntegration: false,           // ✅ più sicuro con preload
+      enableRemoteModule: false
     }
   });
 
+  mainWindow.webContents.openDevTools();  // Facoltativo per debug
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 

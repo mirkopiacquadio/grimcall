@@ -1,4 +1,4 @@
-const { ipcRenderer } = window.electronAPI;
+const ipcRenderer = window.electronAPI;
 
 let pc;
 let localStream;
@@ -19,7 +19,7 @@ ipcRenderer.on('call-data', (event, data) => {
   myName = data.self;
   otherUser = data.to || data.from;
   isCaller = !!data.to;
-  
+
   ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
   // ws = new WebSocket('ws://localhost:3000');
 
@@ -143,9 +143,12 @@ async function ensureLocalStream() {
   }
 }
 
-endCallBtn.onclick = () => {
-  ipcRenderer.send('close-call-window');
-};
+
+if (endCallBtn) {
+  endCallBtn.onclick = () => {
+    ipcRenderer.send('close-call-window');
+  };
+}
 
 ipcRenderer.on('force-end-call', () => {
   endCall();
@@ -166,7 +169,7 @@ function endCall() {
     ws = null; // ✅ Chiudi la WebSocket e rimuovi il riferimento
   }
 
-    ipcRenderer.send('call-ended'); 
+  ipcRenderer.send('call-ended');
 }
 
 function pcRemoteDescriptionSet() {
