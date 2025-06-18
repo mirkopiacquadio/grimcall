@@ -50,10 +50,8 @@ ipcRenderer.on('call-data', (event, data) => {
         break;
       case 'offer':
         console.log("📩 Ricevuta offer da:", data.from);
-
-        createPeerConnectionIfNeeded(data.from);
-
-        await ensureLocalStream(); // ✅ Ora pc esiste!
+        createPeerConnectionIfNeeded();
+        await ensureLocalStream();
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
         processIceQueue();
 
@@ -85,7 +83,7 @@ ipcRenderer.on('call-data', (event, data) => {
 
 async function startCall() {
   console.log("🚀 Avvio chiamata. Caller?", isCaller);
-  createPeerConnectionIfNeeded(otherUser);
+  createPeerConnectionIfNeeded();
   await ensureLocalStream();
 
   if (isCaller) {
@@ -106,10 +104,16 @@ async function ensureLocalStream() {
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localVideo.srcObject = localStream;
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      // Attacca i track una sola volta
+      if (pc) {
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      }
     } catch (err) {
       console.error("🎙️ Errore accesso dispositivi locali:", err);
     }
+  } else if (pc && pc.getSenders().length === 0) {
+    // Aggiungi i track solo se non ci sono già sender
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
   }
 }
 
