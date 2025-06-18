@@ -78,9 +78,19 @@ function connectWebSocket() {
     ws.send(JSON.stringify({ type: 'login', name: myName }));
   };
 
-  ws.onmessage = msg => {
-    const data = JSON.parse(msg.data);
-
+  ws.onmessage = async (msg) => {
+    let data;
+    if (typeof msg.data === "string") {
+      data = JSON.parse(msg.data);
+    } else if (msg.data instanceof Blob) {
+      // Blob: convertirlo in testo e poi in JSON
+      const text = await msg.data.text();
+      data = JSON.parse(text);
+    } else {
+      console.error("Tipo di messaggio WebSocket non gestito:", msg.data);
+      return;
+    }
+    
     if (data.type === 'userlist') {
       renderOperators(data.users);
     }
