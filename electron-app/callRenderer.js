@@ -1,4 +1,4 @@
-const { ipcRenderer } = window.electronAPI;
+const { ipcRenderer } = require('electron');
 
 let pc;
 let localStream;
