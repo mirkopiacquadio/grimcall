@@ -31,6 +31,26 @@ ipcRenderer.on('call-data', (event, data) => {
     }
   };
 
+  function createPeerConnectionIfNeeded(target) {
+    if (!pc) {
+      pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log("📤 Inviando ICE...");
+          ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: data.from }));
+        }
+      };
+
+      pc.ontrack = (event) => {
+        console.log('🎥 Ricevuto flusso remoto:', event.streams);
+        if (event.streams && event.streams[0]) {
+          remoteVideo.srcObject = event.streams[0];
+        }
+        callStatus.innerText = '';
+      };
+    }
+  }
+
   ws.onmessage = async (msg) => {
     let data;
     if (typeof msg.data === "string") {
@@ -51,27 +71,7 @@ ipcRenderer.on('call-data', (event, data) => {
       case 'offer':
         console.log("📩 Ricevuta offer da:", data.from);
 
-        // 👉 Inizializza subito la connessione!
-        if (!pc) {
-          pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-          });
-
-          pc.onicecandidate = (event) => {
-            if (event.candidate) {
-              console.log("📤 Inviando ICE...");
-              ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: data.from }));
-            }
-          };
-
-          pc.ontrack = (event) => {
-            console.log('🎥 Ricevuto flusso remoto:', event.streams);
-            if (event.streams && event.streams[0]) {
-              remoteVideo.srcObject = event.streams[0];
-            }
-            callStatus.innerText = '';
-          };
-        }
+        createPeerConnectionIfNeeded(data.from);
 
         await ensureLocalStream(); // ✅ Ora pc esiste!
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
@@ -105,26 +105,7 @@ ipcRenderer.on('call-data', (event, data) => {
 
 async function startCall() {
   console.log("🚀 Avvio chiamata. Caller?", isCaller);
-
-  pc = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-  });
-
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      console.log("📤 Inviando ICE...");
-      ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: otherUser }));
-    }
-  };
-
-  pc.ontrack = (event) => {
-    console.log('🎥 Ricevuto flusso remoto:', event.streams);
-    if (event.streams && event.streams[0]) {
-      remoteVideo.srcObject = event.streams[0];
-    }
-    callStatus.innerText = '';
-  };
-
+  createPeerConnectionIfNeeded(otherUser);
   await ensureLocalStream();
 
   if (isCaller) {
