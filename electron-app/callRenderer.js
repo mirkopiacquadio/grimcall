@@ -92,7 +92,7 @@ async function startCall() {
       await pc.setLocalDescription(offer);
       pcReady = true;
       processIceQueue();
-      ws.send(JSON.stringify({ type: 'offer', offer, to: otherUser }));
+      ws.send(JSON.stringify({ type: 'offer', offer, to: myName }));
     } catch (err) {
       console.error("❌ Errore creazione offerta:", err);
     }

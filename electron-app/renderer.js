@@ -100,6 +100,7 @@ function connectWebSocket() {
     }
 
     if (data.type === 'incoming-call' && isOperator) {
+       console.log('Ricevuta chiamata in arrivo:', data);
       document.getElementById('incomingCallPopup').style.display = 'flex';
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
 
