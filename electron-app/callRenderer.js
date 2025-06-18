@@ -153,6 +153,7 @@ if (endCallBtn) {
       // Operatore: non chiudere ws, solo chiudi finestra
     } else {
       // Cliente: chiudi la ws (logout)
+      logoutBtn.click();
       if (ws) {
         ws.close();
         ws = null;
