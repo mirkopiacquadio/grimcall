@@ -14,18 +14,27 @@ let isCaller = false;
 let iceQueue = [];
 let pcReady = false;
 
-
+// SETUP VARIABILI CORRETTE GUEST/OPERATORE
 ipcRenderer.on('call-data', (event, data) => {
   myName = data.self;
-  otherUser = data.to || data.from;
-  isCaller = !!data.to;
+
+  // Distinzione netta Guest/Operatore
+  if (data.to) {
+    otherUser = data.to;        // Guest: to=Operatore
+    isCaller = true;
+  } else if (data.from) {
+    otherUser = data.from;      // Operatore: from=Guest
+    isCaller = false;
+  } else {
+    console.warn('Call window opened without peer info!');
+  }
+  console.log("DEBUG call-window INIT:", { myName, otherUser, isCaller });
 
   ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
   // ws = new WebSocket('ws://localhost:3000');
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'login', name: myName }));
-    //startCall();
     if (isCaller) {
       ws.send(JSON.stringify({ type: 'call', target: otherUser }));
     }
@@ -57,7 +66,7 @@ ipcRenderer.on('call-data', (event, data) => {
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        ws.send(JSON.stringify({ type: 'answer', answer, to: data.from }));
+        ws.send(JSON.stringify({ type: 'answer', answer, to: data.from, from: myName }));
         break;
 
       case 'answer':
@@ -69,7 +78,7 @@ ipcRenderer.on('call-data', (event, data) => {
 
       case 'ice':
         if (data.candidate) {
-          console.log("❄️ ICE candidate ricevuto");
+          console.log("❄️ ICE candidate ricevuto da:", data.from);
           if (pc && pcRemoteDescriptionSet()) {
             await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
           } else {
@@ -82,7 +91,7 @@ ipcRenderer.on('call-data', (event, data) => {
 });
 
 async function startCall() {
-  console.log("🚀 Avvio chiamata. Caller?", isCaller);
+  console.log("🚀 Avvio chiamata. Caller?", isCaller, "Guest/Operatore:", { myName, otherUser });
   createPeerConnectionIfNeeded();
   await ensureLocalStream();
 
@@ -92,7 +101,7 @@ async function startCall() {
       await pc.setLocalDescription(offer);
       pcReady = true;
       processIceQueue();
-      ws.send(JSON.stringify({ type: 'offer', offer, to: myName }));
+      ws.send(JSON.stringify({ type: 'offer', offer, to: otherUser, from: myName }));
     } catch (err) {
       console.error("❌ Errore creazione offerta:", err);
     }
@@ -104,7 +113,6 @@ async function ensureLocalStream() {
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localVideo.srcObject = localStream;
-      // Attacca i track una sola volta
       if (pc) {
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
       }
@@ -112,7 +120,6 @@ async function ensureLocalStream() {
       console.error("🎙️ Errore accesso dispositivi locali:", err);
     }
   } else if (pc && pc.getSenders().length === 0) {
-    // Aggiungi i track solo se non ci sono già sender
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
   }
 }
@@ -123,8 +130,7 @@ function createPeerConnectionIfNeeded() {
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         console.log("📤 Inviando ICE...");
-        // QUI correggi:
-        ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: myName }));
+        ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: otherUser, from: myName }));
       }
     };
 
@@ -151,16 +157,16 @@ ipcRenderer.on('force-end-call', () => {
 function endCall() {
   if (pc) {
     pc.close();
-    pc = null; // ✅ Importante per forzare la creazione di una nuova connessione
+    pc = null;
   }
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
-    localStream = null; // ✅ Rilascia il flusso locale
+    localStream = null;
   }
   if (ws) {
     ws.send(JSON.stringify({ type: 'bye' }));
     ws.close();
-    ws = null; // ✅ Chiudi la WebSocket e rimuovi il riferimento
+    ws = null;
   }
 
   ipcRenderer.send('call-ended');

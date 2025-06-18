@@ -100,7 +100,7 @@ function connectWebSocket() {
     }
 
     if (data.type === 'incoming-call' && isOperator) {
-       console.log('Ricevuta chiamata in arrivo:', data);
+      console.log('Ricevuta chiamata in arrivo:', data);
       document.getElementById('incomingCallPopup').style.display = 'flex';
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
 
@@ -121,10 +121,14 @@ function connectWebSocket() {
     }
 
     if (data.type === 'call-accepted') {
-      ipcRenderer.send('call-data', { from: data.from, self: myName });
-      isInCall = true;
-      screensaver.style.display = "none";
+      if (!isInCall) {
+        // Solo se non sei già in chiamata apri la finestra!
+        ipcRenderer.send('call-data', { from: data.from, self: myName });
+        isInCall = true;
+        screensaver.style.display = "none";
+      }
     }
+
   };
 
   document.getElementById('logoutBtn').onclick = logout;
