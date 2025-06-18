@@ -1,5 +1,4 @@
-// renderer.js con supporto a messaggio coda operatore
-const { ipcRenderer } = require('electron');
+const ipcRenderer = window.electronAPI;
 
 let ws;
 let myName = '';
@@ -188,5 +187,3 @@ welcomeTitle.onclick = () => {
     console.log("🚪 Uscita dalla modalità kiosk richiesta!");
   }
 };
-
-module.exports = { myName, ws };
