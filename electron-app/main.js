@@ -18,33 +18,11 @@ function createMainWindow() {
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
-function createCallWindow(data) {
-  let callWindow = new BrowserWindow({
-    fullscreen: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true
-    }
-  });
-
-  callWindow.loadFile(path.join(__dirname, 'callWindow.html'));
-
-  callWindow.webContents.once('did-finish-load', () => {
-    callWindow.webContents.send('call-data', data);
-    callWindow.webContents.openDevTools();
-  });
-
-  callWindow.on('close', () => {
-    callWindow = null;
-  });
-}
-
 app.whenReady().then(() => {
   createMainWindow();
 
   ipcMain.on('call-data', (event, data) => {
-    createCallWindow(data);
+    //createCallWindow(data);
   });
 
   ipcMain.on('open-call-window', (event, callData) => {
@@ -65,7 +43,7 @@ app.whenReady().then(() => {
     callWindow.loadFile(path.join(__dirname, 'callWindow.html'));
     callWindow.webContents.once('did-finish-load', () => {
       callWindow.webContents.send('call-data', callData);
-      // callWindow.webContents.openDevTools();
+      callWindow.webContents.openDevTools();
     });
 
     callWindow.on('closed', () => {
