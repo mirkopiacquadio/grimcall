@@ -1,4 +1,4 @@
-const ipcRenderer = window.electronAPI.ipcRenderer;
+const { ipcRenderer } = window.electronAPI;
 
 let pc;
 let localStream;
