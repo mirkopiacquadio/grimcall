@@ -6,7 +6,8 @@ const remoteVideo = document.getElementById('remoteVideo');
 const localVideo = document.getElementById('localVideo');
 const callStatus = document.getElementById('callStatus');
 const endCallBtn = document.getElementById('endCallBtn');
-
+const logoutBtn = document.getElementById('logoutBtn');
+let isOperator = false;
 let myName = '';
 let otherUser = '';
 let ws;
@@ -22,6 +23,7 @@ ipcRenderer.on('call-data', (event, data) => {
   if (data.to) {
     otherUser = data.to;        // Guest: to=Operatore
     isCaller = true;
+    isOperator = false;
   } else if (data.from) {
     otherUser = data.from;      // Operatore: from=Guest
     isCaller = false;
@@ -146,9 +148,11 @@ function createPeerConnectionIfNeeded() {
 
 if (endCallBtn) {
   endCallBtn.onclick = () => {
-    endCall(); // chiude peer/stream, manda bye
-    if (isCaller) {
-      // Il cliente chiude la WebSocket, fa logout
+    endCall();
+    if (isOperator) {
+      // Operatore: non chiudere ws, solo chiudi finestra
+    } else {
+      // Cliente: chiudi la ws (logout)
       if (ws) {
         ws.close();
         ws = null;
@@ -161,8 +165,11 @@ if (endCallBtn) {
 
 ipcRenderer.on('force-end-call', () => {
   endCall();
-  if (isCaller) {
-    // Il cliente chiude la WebSocket, fa logout
+  if (isOperator) {
+    // Operatore: non chiudere ws, solo chiudi finestra
+  } else {
+    // Cliente: chiudi la ws (logout)
+    logoutBtn.click();
     if (ws) {
       ws.close();
       ws = null;
