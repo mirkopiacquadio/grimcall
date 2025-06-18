@@ -146,6 +146,7 @@ function createPeerConnectionIfNeeded() {
 
 if (endCallBtn) {
   endCallBtn.onclick = () => {
+    endCall();
     ipcRenderer.send('close-call-window');
   };
 }
@@ -164,6 +165,7 @@ function endCall() {
     localStream = null;
   }
   if (ws) {
+    console.log('TEST')
     ws.send(JSON.stringify({ type: 'bye' }));
     ws.close();
     ws = null;
