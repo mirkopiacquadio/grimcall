@@ -32,7 +32,16 @@ ipcRenderer.on('call-data', (event, data) => {
   };
 
   ws.onmessage = async (msg) => {
-    const data = JSON.parse(msg.data);
+    let data;
+    if (typeof msg.data === "string") {
+      data = JSON.parse(msg.data);
+    } else if (msg.data instanceof Blob) {
+      const text = await msg.data.text();
+      data = JSON.parse(text);
+    } else {
+      console.error("Tipo di messaggio WebSocket non gestito:", msg.data);
+      return;
+    }
 
     switch (data.type) {
       case 'call-accepted':

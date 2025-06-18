@@ -30,7 +30,7 @@ function resetInactivityTimer() {
     screensaver.style.display = "none";
     inactivityTimeout = setTimeout(() => {
       screensaver.style.display = "block";
-    }, 10000);
+    }, 100000);
   }
 }
 
@@ -90,7 +90,7 @@ function connectWebSocket() {
       console.error("Tipo di messaggio WebSocket non gestito:", msg.data);
       return;
     }
-    
+
     if (data.type === 'userlist') {
       renderOperators(data.users);
     }
