@@ -1,144 +1,175 @@
-// server.js aggiornato con gestione coda per più operatori
 const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 3000 });
 
-let clients = {}; // { username: { ws, available } }
-let queue = [];   // [{ from: 'Guest-123' }]
+let users = [];
+let queue = [];
 
-wss.on('connection', (ws) => {
-  let currentUser = null;
+console.log("🚀 [SERVER] WebSocket server started on port 3000");
 
-  ws.on('message', (msg) => {
-    let data;
-    try {
-      data = JSON.parse(msg);
-    } catch {
-      return;
+// Helpers
+function getUserBySocket(ws) {
+  return users.find(u => u.socket === ws);
+}
+
+function getUserByName(name) {
+  return users.find(u => u.name === name);
+}
+
+function broadcastUserList() {
+  const payload = {
+    type: 'userlist',
+    users: users.map(u => ({
+      name: u.name,
+      available: u.available,
+    })),
+  };
+  users.forEach(u => {
+    if (u.socket && u.socket.readyState === WebSocket.OPEN) {
+      u.socket.send(JSON.stringify(payload));
     }
+  });
+  console.log("📡 [BROADCAST] User list sent:", payload.users);
+}
 
-    switch (data.type) {
-      case 'login':
-        currentUser = data.name;
-        clients[currentUser] = { ws, available: true };
-        sendUserList();
-        processQueue();
-        break;
+function checkQueue() {
+  queue.forEach((entry, idx) => {
+    const callee = getUserByName(entry.to);
+    const caller = getUserByName(entry.from);
 
-      case 'call':
-        const availableOperators = Object.entries(clients)
-          .filter(([name, c]) => c.available && name !== currentUser);
+    if (callee && callee.available && !callee.inCall && caller) {
+      callee.socket.send(JSON.stringify({ type: 'incoming-call', from: entry.from }));
+      console.log(`📞 [QUEUE] Incoming call from ${entry.from} to ${entry.to}`);
+      callee.inCall = true;
+      callee.available = false;
+      queue.splice(idx, 1);
+    }
+  });
+}
 
-        if (availableOperators.length > 0) {
-          const [operatorName, operator] = availableOperators[0];
+// Evento nuova connessione
+wss.on('connection', ws => {
+  console.log("🟢 [CONNECT] New client connected");
 
-          operator.ws.send(JSON.stringify({
-            type: 'incoming-call',
-            from: currentUser
-          }));
+  ws.on('message', msg => {
+    try {
+      const data = JSON.parse(msg);
+      console.log("📨 [RECV]", data);
 
-          // mark both temporarily unavailable
-          clients[currentUser].available = false;
-          clients[operatorName].available = false;
-          sendUserList();
+      // LOGIN
+      if (data.type === 'login') {
+        // Se già presente, aggiorno il socket
+        let existingUser = getUserByName(data.name);
+        if (existingUser) {
+          existingUser.socket = ws;
+          existingUser.available = true;
+          existingUser.inCall = false;
         } else {
-          // nessun operatore disponibile, metti in coda
-          queue.push({ from: currentUser });
-          clients[currentUser].ws.send(JSON.stringify({
-            type: 'queued'
-          }));
+          users.push({
+            name: data.name,
+            socket: ws,
+            available: true,
+            inCall: false,
+          });
         }
-        break;
+        console.log(`✅ [LOGIN] ${data.name} logged in`);
+        broadcastUserList();
+        return;
+      }
 
-      case 'accept':
-        if (clients[data.from] && clients[data.to]) {
-          clients[data.from].ws.send(JSON.stringify({
-            type: 'call-accepted',
-            from: data.to
-          }));
-          clients[data.from].available = false;
-          clients[data.to].available = false;
-          sendUserList();
+      // CALL (richiesta di chiamata)
+      if (data.type === 'call') {
+        const caller = getUserBySocket(ws);
+        const callee = getUserByName(data.target);
+        if (!caller || !callee) {
+          console.log("❌ [CALL] Caller or callee not found");
+          return;
         }
-        break;
-
-      case 'reject':
-        if (clients[data.from]) {
-          clients[data.from].ws.send(JSON.stringify({
-            type: 'call-rejected',
-            from: currentUser
-          }));
+        if (!callee.available || callee.inCall) {
+          // Metti in coda
+          queue.push({ from: caller.name, to: callee.name });
+          ws.send(JSON.stringify({ type: 'queued' }));
+          console.log(`⏳ [QUEUE] ${caller.name} added to queue for ${callee.name}`);
+        } else {
+          callee.socket.send(JSON.stringify({ type: 'incoming-call', from: caller.name }));
+          callee.inCall = true;
+          callee.available = false;
+          console.log(`📞 [CALL] ${caller.name} is calling ${callee.name}`);
         }
-        clients[currentUser].available = true;
-        sendUserList();
-        processQueue();
-        break;
+        broadcastUserList();
+        return;
+      }
 
-      case 'offer':
-      case 'answer':
-      case 'ice':
-        if (clients[data.to]) {
-          clients[data.to].ws.send(JSON.stringify({
-            ...data,
-            from: currentUser
-          }));
+      // ACCEPT (operatore accetta chiamata)
+      if (data.type === 'accept') {
+        const callee = getUserBySocket(ws);
+        const caller = getUserByName(data.from);
+        if (caller && callee) {
+          caller.socket.send(JSON.stringify({ type: 'call-accepted', from: callee.name }));
+          callee.socket.send(JSON.stringify({ type: 'call-accepted', from: caller.name }));
+          caller.inCall = true;
+          callee.inCall = true;
+          caller.available = false;
+          callee.available = false;
+          console.log(`🟢 [ACCEPT] Call accepted: ${caller.name} <-> ${callee.name}`);
+          broadcastUserList();
         }
-        break;
+        return;
+      }
 
-      case 'bye':
-        if (clients[currentUser]) {
-          clients[currentUser].available = true;
+      // REJECT (operatore rifiuta chiamata)
+      if (data.type === 'reject') {
+        const callee = getUserBySocket(ws);
+        const caller = getUserByName(data.from);
+        if (caller) {
+          caller.socket.send(JSON.stringify({ type: 'call-rejected', from: callee.name }));
         }
-
-        if (data.to && clients[data.to]) {
-          clients[data.to].ws.send(JSON.stringify({
-            type: 'call-ended',
-            from: currentUser
-          }));
-          clients[data.to].available = true;
+        if (callee) {
+          callee.inCall = false;
+          callee.available = true;
         }
+        console.log(`❌ [REJECT] ${callee?.name} rejected call from ${caller?.name}`);
+        broadcastUserList();
+        return;
+      }
+      // END (chiusura chiamata)
+      if (data.type === 'end' || data.type === 'bye') {
+        const user = getUserBySocket(ws);
+        if (user) {
+          user.inCall = false;
+          user.available = true;
+          console.log(`🔚 [END] ${user.name} ended call`);
+          broadcastUserList();
+          checkQueue();
+        }
+        return;
+      }
 
-        sendUserList();
-        processQueue();
-        break;
+      // ICE/OFFER/ANSWER: Pass-through WebRTC (debug)
+      if (["offer", "answer", "ice"].includes(data.type)) {
+        const peer = getUserByName(data.to);
+        if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
+          peer.socket.send(msg);
+          console.log(`🔀 [RELAY] ${data.type} relayed from ${getUserBySocket(ws)?.name} to ${peer.name}`);
+        } else {
+          console.log(`⚠️ [RELAY] Target ${data.to} not found for ${data.type}`);
+        }
+        return;
+      }
+
+    } catch (err) {
+      console.error("❗ [ERROR] Failed to parse message:", msg, err);
     }
   });
 
   ws.on('close', () => {
-    if (currentUser && clients[currentUser]) {
-      delete clients[currentUser];
-      sendUserList();
+    // Rimuovi utente da users
+    const disconnectedUser = getUserBySocket(ws);
+    if (disconnectedUser) {
+      console.log(`🔴 [DISCONNECT] ${disconnectedUser.name} disconnected`);
+      users = users.filter(u => u.socket !== ws);
+      queue = queue.filter(q => getUserByName(q.from)?.socket !== ws);
+      broadcastUserList();
+      checkQueue();
     }
   });
-
-  function sendUserList() {
-    const list = Object.keys(clients).map(name => ({
-      name,
-      available: clients[name].available
-    }));
-    const msg = JSON.stringify({ type: 'userlist', users: list });
-    Object.values(clients).forEach(c => c.ws.send(msg));
-  }
-
-  function processQueue() {
-    if (queue.length === 0) return;
-
-    const availableOperators = Object.entries(clients)
-      .filter(([name, c]) => c.available);
-
-    if (availableOperators.length === 0) return;
-
-    const queuedUser = queue.shift();
-    const [operatorName, operator] = availableOperators[0];
-
-    operator.ws.send(JSON.stringify({
-      type: 'incoming-call',
-      from: queuedUser.from
-    }));
-
-    clients[queuedUser.from].available = false;
-    clients[operatorName].available = false;
-    sendUserList();
-  }
 });
-
-console.log('📡 Signaling server con coda attivo su ws://localhost:3000');

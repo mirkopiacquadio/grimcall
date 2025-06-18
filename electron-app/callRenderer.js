@@ -124,7 +124,7 @@ function createPeerConnectionIfNeeded() {
       if (event.candidate) {
         console.log("📤 Inviando ICE...");
         // QUI correggi:
-        ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: otherUser }));
+        ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: myName }));
       }
     };
 
