@@ -5,7 +5,7 @@ let mainWindow, callWindow;
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
-    fullscreen: true,
+    fullscreen: false,
     kiosk: false,
     frame: false,
     webPreferences: {
