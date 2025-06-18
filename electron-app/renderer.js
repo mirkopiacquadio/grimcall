@@ -11,7 +11,9 @@ let isInCall = false;
 ipcRenderer.on('call-ended', () => {
   isInCall = false;
   if(!isOperator) document.getElementById("logoutBtn").click();
-  else loginAsOperator();
+  else { 
+    loginAsOperator();
+  }
   resetInactivityTimer();
 });
 
