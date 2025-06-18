@@ -1,3 +1,4 @@
+// renderer.js con supporto a messaggio coda operatore
 const { ipcRenderer } = require('electron');
 
 let ws;
@@ -20,7 +21,7 @@ document.getElementById('operatorLoginBtn').onclick = () => {
   form.style.display = form.style.display === 'none' ? 'block' : 'none';
 
   if (form.style.display === 'none') {
-    operatorLoginBtn.style.display = 'none'; // ✅ Assegnazione corretta!
+    operatorLoginBtn.style.display = 'none';
   }
 };
 
@@ -30,7 +31,7 @@ function resetInactivityTimer() {
     screensaver.style.display = "none";
     inactivityTimeout = setTimeout(() => {
       screensaver.style.display = "block";
-    }, 10000); // 10 secondi
+    }, 10000);
   }
 }
 
@@ -70,7 +71,6 @@ function logout() {
 }
 
 function connectWebSocket() {
-
   ws = new WebSocket('wss://f0bf-79-3-219-198.ngrok-free.app');
   // ws = new WebSocket('ws://localhost:3000');
 
@@ -83,6 +83,10 @@ function connectWebSocket() {
 
     if (data.type === 'userlist') {
       renderOperators(data.users);
+    }
+
+    if (data.type === 'queued') {
+      alert('⏳ Attendi: tutti gli operatori sono occupati. Sarai contattato non appena uno si libera.');
     }
 
     if (data.type === 'incoming-call' && isOperator) {
@@ -111,6 +115,7 @@ function connectWebSocket() {
       screensaver.style.display = "none";
     }
   };
+
   document.getElementById('logoutBtn').onclick = logout;
   document.getElementById('loginView').style.display = 'none';
   document.getElementById('userListView').style.display = 'block';
@@ -123,7 +128,6 @@ function renderOperators(usersOnline) {
   container.innerHTML = '';
 
   operatorList.forEach(op => {
-    // 🔒 Escludi l’utente attualmente loggato
     if (op === myName) return;
 
     const isAvailable = usersOnline.find(u => u.name === op && u.available);
@@ -132,7 +136,7 @@ function renderOperators(usersOnline) {
     card.className = 'user-card';
 
     const img = document.createElement('img');
-    img.src = './image.png'; // avatar placeholder
+    img.src = './image.png';
     card.appendChild(img);
 
     const name = document.createElement('div');
@@ -145,7 +149,6 @@ function renderOperators(usersOnline) {
     status.innerText = isAvailable ? 'Disponibile' : 'Non disponibile';
     card.appendChild(status);
 
-    // 🟢 Aggiungi bottone “Chiama” solo se disponibile e non sei tu
     if (isAvailable && !isOperator) {
       const btn = document.createElement('button');
       btn.innerText = 'Chiama';

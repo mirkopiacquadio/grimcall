@@ -1,7 +1,9 @@
+// server.js aggiornato con gestione coda per più operatori
 const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 3000 });
 
 let clients = {}; // { username: { ws, available } }
+let queue = [];   // [{ from: 'Guest-123' }]
 
 wss.on('connection', (ws) => {
   let currentUser = null;
@@ -19,19 +21,35 @@ wss.on('connection', (ws) => {
         currentUser = data.name;
         clients[currentUser] = { ws, available: true };
         sendUserList();
+        processQueue();
         break;
 
       case 'call':
-        if (clients[data.target] && clients[data.target].available) {
-          clients[data.target].ws.send(JSON.stringify({
+        const availableOperators = Object.entries(clients)
+          .filter(([name, c]) => c.available && name !== currentUser);
+
+        if (availableOperators.length > 0) {
+          const [operatorName, operator] = availableOperators[0];
+
+          operator.ws.send(JSON.stringify({
             type: 'incoming-call',
             from: currentUser
+          }));
+
+          // mark both temporarily unavailable
+          clients[currentUser].available = false;
+          clients[operatorName].available = false;
+          sendUserList();
+        } else {
+          // nessun operatore disponibile, metti in coda
+          queue.push({ from: currentUser });
+          clients[currentUser].ws.send(JSON.stringify({
+            type: 'queued'
           }));
         }
         break;
 
       case 'accept':
-        console.log('📩 ACCEPT ricevuto:', data);
         if (clients[data.from] && clients[data.to]) {
           clients[data.from].ws.send(JSON.stringify({
             type: 'call-accepted',
@@ -50,50 +68,27 @@ wss.on('connection', (ws) => {
             from: currentUser
           }));
         }
+        clients[currentUser].available = true;
+        sendUserList();
+        processQueue();
         break;
 
       case 'offer':
-        if (clients[data.to]) {
-          clients[data.to].ws.send(JSON.stringify({
-            type: 'offer',
-            offer: data.offer,
-            from: currentUser,
-            to: data.to
-          }));
-        }
-        break;
-
       case 'answer':
-        if (clients[data.to]) {
-          clients[data.to].ws.send(JSON.stringify({
-            type: 'answer',
-            answer: data.answer,
-            from: currentUser,
-            to: data.to
-          }));
-        }
-        break;
-
       case 'ice':
         if (clients[data.to]) {
           clients[data.to].ws.send(JSON.stringify({
-            type: 'ice',
-            candidate: data.candidate,
-            from: currentUser,
-            to: data.to
+            ...data,
+            from: currentUser
           }));
         }
         break;
 
-
       case 'bye':
-        console.log('📴 BYE ricevuto da:', currentUser);
-
         if (clients[currentUser]) {
           clients[currentUser].available = true;
         }
 
-        // ✅ Avvisa l’altro utente che la chiamata è terminata
         if (data.to && clients[data.to]) {
           clients[data.to].ws.send(JSON.stringify({
             type: 'call-ended',
@@ -103,13 +98,14 @@ wss.on('connection', (ws) => {
         }
 
         sendUserList();
+        processQueue();
         break;
     }
   });
 
   ws.on('close', () => {
     if (currentUser && clients[currentUser]) {
-      clients[currentUser].available = false;
+      delete clients[currentUser];
       sendUserList();
     }
   });
@@ -122,6 +118,27 @@ wss.on('connection', (ws) => {
     const msg = JSON.stringify({ type: 'userlist', users: list });
     Object.values(clients).forEach(c => c.ws.send(msg));
   }
+
+  function processQueue() {
+    if (queue.length === 0) return;
+
+    const availableOperators = Object.entries(clients)
+      .filter(([name, c]) => c.available);
+
+    if (availableOperators.length === 0) return;
+
+    const queuedUser = queue.shift();
+    const [operatorName, operator] = availableOperators[0];
+
+    operator.ws.send(JSON.stringify({
+      type: 'incoming-call',
+      from: queuedUser.from
+    }));
+
+    clients[queuedUser.from].available = false;
+    clients[operatorName].available = false;
+    sendUserList();
+  }
 });
 
-console.log('📡 Signaling server attivo su ws://localhost:3000');
+console.log('📡 Signaling server con coda attivo su ws://localhost:3000');
