@@ -6,7 +6,6 @@ const remoteVideo = document.getElementById('remoteVideo');
 const localVideo = document.getElementById('localVideo');
 const callStatus = document.getElementById('callStatus');
 const endCallBtn = document.getElementById('endCallBtn');
-const logoutBtn = document.getElementById('logoutBtn');
 let isOperator = false;
 let myName = '';
 let otherUser = '';
@@ -153,7 +152,6 @@ if (endCallBtn) {
       // Operatore: non chiudere ws, solo chiudi finestra
     } else {
       // Cliente: chiudi la ws (logout)
-      logoutBtn.click();
       if (ws) {
         ws.close();
         ws = null;
@@ -170,7 +168,6 @@ ipcRenderer.on('force-end-call', () => {
     // Operatore: non chiudere ws, solo chiudi finestra
   } else {
     // Cliente: chiudi la ws (logout)
-    logoutBtn.click();
     if (ws) {
       ws.close();
       ws = null;

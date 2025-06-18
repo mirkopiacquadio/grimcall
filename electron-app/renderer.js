@@ -10,6 +10,7 @@ let isInCall = false;
 
 ipcRenderer.on('call-ended', () => {
   isInCall = false;
+  document.getElementById("logoutBtn").click();
   resetInactivityTimer();
 });
 
