@@ -113,13 +113,14 @@ async function ensureLocalStream() {
   }
 }
 
-function createPeerConnectionIfNeeded(target) {
+function createPeerConnectionIfNeeded() {
   if (!pc) {
     pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         console.log("📤 Inviando ICE...");
-        ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: data.from }));
+        // QUI correggi:
+        ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: otherUser }));
       }
     };
 
@@ -132,7 +133,6 @@ function createPeerConnectionIfNeeded(target) {
     };
   }
 }
-
 
 if (endCallBtn) {
   endCallBtn.onclick = () => {
