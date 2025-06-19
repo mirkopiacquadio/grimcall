@@ -83,35 +83,40 @@ async function setupWebSocket() {
     ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
   };
 
-  ws.onmessage = async e => {
-    const data = JSON.parse(e.data);
+ws.onmessage = async e => {
+  const data = JSON.parse(e.data);
 
-    if (data.type === 'peer-list') {
-      // Peers già in stanza → offri connessione a ciascuno
-      for (const peer of data.peers) await connectToPeer(peer, true);
+  if (data.type === 'peer-list') {
+    // Sei appena entrato, crea connessione verso tutti i peer già dentro (tu FAI L’OFFERTA)
+    for (const peer of data.peers) {
+      await connectToPeer(peer, true);
     }
-    if (data.type === 'new-peer') {
-      // Un nuovo utente entra → offri connessione (solo chi era già dentro!)
-      if (data.name !== myName) await connectToPeer(data.name, true);
+  }
+  if (data.type === 'new-peer') {
+    // Un altro peer è entrato dopo di te: tu aspetti offer, quindi NO offer qui, solo preparati ad answer
+    if (data.name !== myName) {
+      await connectToPeer(data.name, false);
     }
-    if (data.type === 'offer') {
-      await connectToPeer(data.from, false, data.offer);
+  }
+  if (data.type === 'offer') {
+    await connectToPeer(data.from, false, data.offer);
+  }
+  if (data.type === 'answer') {
+    await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
+  }
+  if (data.type === 'ice') {
+    if (!peerConnections[data.from]) {
+      if (!iceQueue[data.from]) iceQueue[data.from] = [];
+      iceQueue[data.from].push(data.candidate);
+    } else {
+      await peerConnections[data.from].addIceCandidate(new RTCIceCandidate(data.candidate));
     }
-    if (data.type === 'answer') {
-      await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
-    }
-    if (data.type === 'ice') {
-      if (!peerConnections[data.from]) {
-        if (!iceQueue[data.from]) iceQueue[data.from] = [];
-        iceQueue[data.from].push(data.candidate);
-      } else {
-        await peerConnections[data.from].addIceCandidate(new RTCIceCandidate(data.candidate));
-      }
-    }
-    if (data.type === 'peer-left') {
-      closePeer(data.name);
-    }
-  };
+  }
+  if (data.type === 'peer-left') {
+    closePeer(data.name);
+  }
+};
+
 }
 
 // 4. Connessione a un altro peer
