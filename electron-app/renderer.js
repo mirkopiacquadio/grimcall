@@ -3,15 +3,23 @@ const ipcRenderer = window.electronAPI;
 let ws;
 let myName = '';
 let isOperator = false;
-let operatorList = ['Mario Rossi', 'Laura Bianchi', 'Marco Neri', 'Giulia Verdi', 'Antonio Esposito'];
+let operatorList = [
+  'Mario Rossi',
+  'Laura Bianchi',
+  'Marco Neri',
+  'Giulia Verdi',
+  'Antonio Esposito'
+];
 let inactivityTimeout;
 const screensaver = document.getElementById("screensaver");
 let isInCall = false;
+let currentRoomId = null; // NEW: traccia la stanza della chiamata
 
 ipcRenderer.on('call-ended', () => {
   isInCall = false;
-  if(!isOperator) document.getElementById("logoutBtn").click();
-  else { 
+  currentRoomId = null;
+  if (!isOperator) document.getElementById("logoutBtn").click();
+  else {
     loginAsOperator();
   }
   resetInactivityTimer();
@@ -37,11 +45,9 @@ function resetInactivityTimer() {
     }, 100000);
   }
 }
-
 ['keydown', 'click', 'touchstart'].forEach(evt =>
   window.addEventListener(evt, resetInactivityTimer)
 );
-
 resetInactivityTimer();
 
 function loginAsOperator() {
@@ -63,10 +69,8 @@ function logout() {
     ws.close();
     ws = null;
   }
-
   myName = '';
   isOperator = false;
-
   document.getElementById('userListView').style.display = 'none';
   document.getElementById('loginView').style.display = 'block';
   document.getElementById('operatorForm').style.display = 'none';
@@ -74,7 +78,6 @@ function logout() {
 }
 
 function connectWebSocket() {
-
   ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
   // ws = new WebSocket('ws://localhost:3000');
 
@@ -87,7 +90,6 @@ function connectWebSocket() {
     if (typeof msg.data === "string") {
       data = JSON.parse(msg.data);
     } else if (msg.data instanceof Blob) {
-      // Blob: convertirlo in testo e poi in JSON
       const text = await msg.data.text();
       data = JSON.parse(text);
     } else {
@@ -104,14 +106,17 @@ function connectWebSocket() {
     }
 
     if (data.type === 'incoming-call' && isOperator) {
-      console.log('Ricevuta chiamata in arrivo:', data);
+      // Lato operatore: popup di chiamata
       document.getElementById('incomingCallPopup').style.display = 'flex';
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
 
       document.getElementById('acceptCallBtn').onclick = () => {
-        ws.send(JSON.stringify({ type: 'accept', from: data.from, to: myName }));
-        ipcRenderer.send('open-call-window', { from: data.from, self: myName });
+        // ROOM ID UNICO → stessa roomId per tutti
+        currentRoomId = data.roomId || generateRoomIdFromNames(myName, data.from);
+        ws.send(JSON.stringify({ type: 'join', name: myName, room: currentRoomId }));
+        ipcRenderer.send('open-call-window', { self: myName, roomId: currentRoomId });
         document.getElementById('incomingCallPopup').style.display = 'none';
+        isInCall = true;
       };
 
       document.getElementById('rejectCallBtn').onclick = () => {
@@ -125,14 +130,8 @@ function connectWebSocket() {
     }
 
     if (data.type === 'call-accepted') {
-      if (!isInCall) {
-        // Solo se non sei già in chiamata apri la finestra!
-        ipcRenderer.send('call-data', { from: data.from, self: myName });
-        isInCall = true;
-        screensaver.style.display = "none";
-      }
+      // Non serve più: usiamo solo roomId/join per mesh
     }
-
   };
 
   document.getElementById('logoutBtn').onclick = logout;
@@ -142,6 +141,12 @@ function connectWebSocket() {
   document.getElementById('logoutBtn').style.display = 'inline-block';
 }
 
+// Semplice utilità per generare un roomId unico da due nomi
+function generateRoomIdFromNames(a, b) {
+  return [a, b].sort().join('_');
+}
+
+// QUI LA LOGICA PER LANCIARE LA CHIAMATA come guest (o operator su altro operator!)
 function renderOperators(usersOnline) {
   const container = document.getElementById('operatorList');
   container.innerHTML = '';
@@ -172,8 +177,11 @@ function renderOperators(usersOnline) {
       const btn = document.createElement('button');
       btn.innerText = 'Chiama';
       btn.onclick = () => {
-        ws.send(JSON.stringify({ type: 'call', target: op }));
-        ipcRenderer.send('open-call-window', { to: op, self: myName });
+        // Genera una roomId unica guest-operatore
+        currentRoomId = generateRoomIdFromNames(myName, op);
+        ws.send(JSON.stringify({ type: 'join', name: myName, room: currentRoomId }));
+        ipcRenderer.send('open-call-window', { self: myName, roomId: currentRoomId });
+        isInCall = true;
       };
       card.appendChild(btn);
     }
@@ -182,13 +190,12 @@ function renderOperators(usersOnline) {
   });
 }
 
+// Kiosk: easter egg per uscire
 const welcomeTitle = document.getElementById("grimTitle");
 let welcomeClickCount = 0;
-
 welcomeTitle.onclick = () => {
   welcomeClickCount++;
   console.log(`👆 Click su Benvenuto: ${welcomeClickCount} / 15`);
-
   if (welcomeClickCount >= 15) {
     ipcRenderer.send("exit-kiosk");
     welcomeClickCount = 0;

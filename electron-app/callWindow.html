@@ -4,15 +4,91 @@
     <meta charset="UTF-8" />
     <title>GrimCall - Videochiamata</title>
     <link rel="stylesheet" href="style.css" />
+    <style>
+      #addParticipantBtn, #participantsDropdown {
+        margin-left: 12px;
+        vertical-align: middle;
+      }
+      #participantsDropdown {
+        display: none;
+        position: absolute;
+        right: 110px; /* Regola la posizione se necessario */
+        top: 20px;
+        background: #fff;
+        border: 1px solid #aaa;
+        border-radius: 7px;
+        z-index: 1000;
+      }
+      #participantsDropdown button {
+        width: 100%;
+        border: none;
+        background: none;
+        padding: 8px 15px;
+        text-align: left;
+        cursor: pointer;
+      }
+      #participantsDropdown button:hover {
+        background: #eee;
+      }
+    </style>
   </head>
   <body class="call-window">
     <div class="call-status" id="callStatus">Sto chiamando l'operatore...</div>
 
     <video id="remoteVideo" autoplay playsinline class="remote-video"></video>
     <video id="localVideo" autoplay muted playsinline class="local-video"></video>
-
+    <div id="remoteVideos"></div>
     <button id="endCallBtn" class="end-call-btn">❌ Chiudi</button>
+    <button id="addParticipantBtn" class="end-call-btn">➕ Aggiungi partecipante</button>
+    <div id="participantsDropdown"></div>
 
     <script src="./callRenderer.js" defer></script>
+    <script>
+      // INTEGRAZIONE JS per il bottone aggiungi partecipante
+      document.addEventListener('DOMContentLoaded', () => {
+        const { electronAPI } = window;
+        const addBtn = document.getElementById('addParticipantBtn');
+        const dropdown = document.getElementById('participantsDropdown');
+
+        // Esempio di lista utenti disponibili da popolare dinamicamente.
+        let availableUsers = [];
+
+        // Simula: window.availableUsers viene aggiornata da callRenderer.js (o altro, vedi nota sotto)
+        window.setAvailableUsersForDropdown = (users) => {
+          availableUsers = users || [];
+        };
+
+        addBtn.onclick = () => {
+          // Simula una richiesta ai disponibili (chiama callRenderer che aggiorna window.setAvailableUsersForDropdown)
+          if (window.requestAvailableUsersForDropdown) window.requestAvailableUsersForDropdown();
+          if (availableUsers.length === 0) {
+            dropdown.innerHTML = '<div style="padding:10px">Nessun utente da aggiungere</div>';
+          } else {
+            dropdown.innerHTML = availableUsers.map(u =>
+              `<button data-username="${u}">${u}</button>`
+            ).join('');
+          }
+          dropdown.style.display = 'block';
+        };
+
+        // Click su utente per aggiungerlo
+        dropdown.onclick = function(event) {
+          if (event.target.tagName === "BUTTON") {
+            const username = event.target.getAttribute('data-username');
+            dropdown.style.display = 'none';
+            if (window.addParticipantToCall) {
+              window.addParticipantToCall(username);
+            }
+          }
+        };
+
+        // Chiudi dropdown su click fuori
+        document.body.addEventListener('mousedown', function(event) {
+          if (!dropdown.contains(event.target) && event.target !== addBtn) {
+            dropdown.style.display = 'none';
+          }
+        });
+      });
+    </script>
   </body>
 </html>

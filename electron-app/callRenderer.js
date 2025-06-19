@@ -1,216 +1,209 @@
 const ipcRenderer = window.electronAPI;
 
-let pc;
+let myName = '';
+let roomId = '';
+let ws;
 let localStream;
-const remoteVideo = document.getElementById('remoteVideo');
+let peerConnections = {}; // { peerName: RTCPeerConnection }
+let remoteStreams = {};   // { peerName: MediaStream }
+let iceQueue = {};        // { peerName: [candidate, ...] }
+
 const localVideo = document.getElementById('localVideo');
+const remoteVideos = document.getElementById('remoteVideos') || makeRemoteVideosContainer();
 const callStatus = document.getElementById('callStatus');
 const endCallBtn = document.getElementById('endCallBtn');
-let isOperator = false;
-let myName = '';
-let otherUser = '';
-let ws;
-let isCaller = false;
-let iceQueue = [];
-let pcReady = false;
 
-// SETUP VARIABILI CORRETTE GUEST/OPERATORE
-ipcRenderer.on('call-data', (event, data) => {
-  myName = data.self;
+// In callRenderer.js
+// Elenco utenti connessi ma NON già in chiamata
+window.requestAvailableUsersForDropdown = () => {
+  // In un caso reale, qui dovresti avere una lista di utenti disponibili, esclusi quelli già in roomId
+  // Esempio banale: 
+  // window.setAvailableUsersForDropdown(["Laura Bianchi", "Marco Neri"]);
+  // In un'app vera: aggiorna da WebSocket/userlist!
 
-  // Distinzione netta Guest/Operatore
-  if (data.to) {
-    otherUser = data.to;        // Guest: to=Operatore
-    isCaller = true;
-    isOperator = false;
-  } else if (data.from) {
-    otherUser = data.from;      // Operatore: from=Guest
-    isCaller = false;
+  // Placeholder: metti qui la logica per popolare la lista giusta!
+  if (window.lastUserList) {
+    // Esempio: filtra chi non è già nella chiamata
+    const alreadyInCall = Object.keys(peers); // peers dev'essere globale in mesh
+    const filtered = window.lastUserList.filter(
+      name => !alreadyInCall.includes(name) && name !== myName
+    );
+    window.setAvailableUsersForDropdown(filtered);
   } else {
-    console.warn('Call window opened without peer info!');
+    window.setAvailableUsersForDropdown([]);
   }
-  console.log("DEBUG call-window INIT:", { myName, otherUser, isCaller });
+};
 
-  ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
-  // ws = new WebSocket('ws://localhost:3000');
+// Handler che avvia la finestra per l’utente scelto
+window.addParticipantToCall = (username) => {
+  // Invii segnale al main process per aprire la finestra anche su quell’utente
+  // (ad esempio, tramite WebSocket: invii un "invite" con roomId e username)
+  ws.send(JSON.stringify({ type: 'invite', to: username, room: currentRoomId }));
+};
 
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'login', name: myName }));
-    if (isCaller) {
-      ws.send(JSON.stringify({ type: 'call', target: otherUser }));
-    }
-  };
 
-  ws.onmessage = async (msg) => {
-    let data;
-    if (typeof msg.data === "string") {
-      data = JSON.parse(msg.data);
-    } else if (msg.data instanceof Blob) {
-      const text = await msg.data.text();
-      data = JSON.parse(text);
-    } else {
-      console.error("Tipo di messaggio WebSocket non gestito:", msg.data);
-      return;
-    }
+// Utility per creare dinamicamente il container se non esiste
+function makeRemoteVideosContainer() {
+  const d = document.createElement('div');
+  d.id = 'remoteVideos';
+  d.style.display = 'flex';
+  d.style.gap = '16px';
+  d.style.justifyContent = 'center';
+  d.style.marginTop = '1rem';
+  document.body.appendChild(d);
+  return d;
+}
 
-    switch (data.type) {
-      case 'call-accepted':
-        console.log('📞 Chiamata accettata, avvio la connessione WebRTC...');
-        startCall();
-        break;
-      case 'offer':
-        console.log("📩 Ricevuta offer da:", data.from);
-        createPeerConnectionIfNeeded();
-        await ensureLocalStream();
-        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-        processIceQueue();
-
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        ws.send(JSON.stringify({ type: 'answer', answer, to: data.from, from: myName }));
-        break;
-
-      case 'answer':
-        console.log("✅ Answer ricevuta da:", data.from);
-        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-        pcReady = true;
-        processIceQueue();
-        break;
-
-      case 'ice':
-        if (data.candidate) {
-          console.log("❄️ ICE candidate ricevuto da:", data.from);
-          if (pc && pcRemoteDescriptionSet()) {
-            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-          } else {
-            iceQueue.push(data.candidate);
-          }
-        }
-        break;
-    }
-  };
+// 1. Ingresso dati chiamata
+ipcRenderer.on('call-data', async (event, data) => {
+  myName = data.self;
+  roomId = data.roomId || 'room-default';
+  await setupWebSocket();
+  await setupLocalStream();
 });
 
-async function startCall() {
-  console.log("🚀 Avvio chiamata. Caller?", isCaller, "Guest/Operatore:", { myName, otherUser });
-  createPeerConnectionIfNeeded();
-  await ensureLocalStream();
+// 2. Setup media
+async function setupLocalStream() {
+  if (localStream) return;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localVideo.srcObject = localStream;
+  } catch (err) {
+    alert("Errore accesso webcam/microfono");
+    throw err;
+  }
+}
 
-  if (isCaller) {
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      pcReady = true;
-      processIceQueue();
-      ws.send(JSON.stringify({ type: 'offer', offer, to: otherUser, from: myName }));
-    } catch (err) {
-      console.error("❌ Errore creazione offerta:", err);
+// 3. Signaling WebSocket
+async function setupWebSocket() {
+  ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
+  // ws = new WebSocket('ws://localhost:3000');
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
+  };
+
+  ws.onmessage = async e => {
+    const data = JSON.parse(e.data);
+
+    if (data.type === 'peer-list') {
+      // Peers già in stanza → offri connessione a ciascuno
+      for (const peer of data.peers) await connectToPeer(peer, true);
     }
-  }
-}
-
-async function ensureLocalStream() {
-  if (!localStream) {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localVideo.srcObject = localStream;
-      if (pc) {
-        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-      }
-    } catch (err) {
-      console.error("🎙️ Errore accesso dispositivi locali:", err);
+    if (data.type === 'new-peer') {
+      // Un nuovo utente entra → offri connessione (solo chi era già dentro!)
+      if (data.name !== myName) await connectToPeer(data.name, true);
     }
-  } else if (pc && pc.getSenders().length === 0) {
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    if (data.type === 'offer') {
+      await connectToPeer(data.from, false, data.offer);
+    }
+    if (data.type === 'answer') {
+      await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
+    }
+    if (data.type === 'ice') {
+      if (!peerConnections[data.from]) {
+        if (!iceQueue[data.from]) iceQueue[data.from] = [];
+        iceQueue[data.from].push(data.candidate);
+      } else {
+        await peerConnections[data.from].addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    }
+    if (data.type === 'peer-left') {
+      closePeer(data.name);
+    }
+  };
+}
+
+// 4. Connessione a un altro peer
+async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
+  if (peerConnections[peerName]) return; // già connesso
+
+  // Crea peerConnection
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  peerConnections[peerName] = pc;
+  remoteStreams[peerName] = null;
+  iceQueue[peerName] = iceQueue[peerName] || [];
+
+  // ICE candidate → signaling
+  pc.onicecandidate = event => {
+    if (event.candidate) {
+      ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: peerName }));
+    }
+  };
+
+  // Nuovo stream remoto → aggiungi un video
+  pc.ontrack = event => {
+    let stream = event.streams[0];
+    if (!remoteStreams[peerName]) {
+      remoteStreams[peerName] = stream;
+      let v = document.getElementById('video_' + peerName);
+      if (!v) {
+        v = document.createElement('video');
+        v.id = 'video_' + peerName;
+        v.autoplay = true;
+        v.playsInline = true;
+        v.className = 'remote-video';
+        remoteVideos.appendChild(v);
+      }
+      v.srcObject = stream;
+    }
+  };
+
+  // Invio local stream
+  await setupLocalStream();
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+  // Offer/Answer logic
+  if (isOfferer) {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    ws.send(JSON.stringify({ type: 'offer', offer, to: peerName }));
+  } else if (remoteOffer) {
+    await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    ws.send(JSON.stringify({ type: 'answer', answer, to: peerName }));
+  }
+
+  // Se avevi ICE in coda
+  if (iceQueue[peerName].length) {
+    for (const candidate of iceQueue[peerName]) {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+    iceQueue[peerName] = [];
   }
 }
 
-function createPeerConnectionIfNeeded() {
-  if (!pc) {
-    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log("📤 Inviando ICE...");
-        ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: otherUser, from: myName }));
-      }
-    };
-
-    pc.ontrack = (event) => {
-      console.log('🎥 Ricevuto flusso remoto:', event.streams);
-      if (event.streams && event.streams[0]) {
-        remoteVideo.srcObject = event.streams[0];
-      }
-      callStatus.innerText = '';
-    };
+// 5. Chiusura peer (utente uscito)
+function closePeer(peerName) {
+  if (peerConnections[peerName]) {
+    peerConnections[peerName].close();
+    delete peerConnections[peerName];
   }
+  if (remoteStreams[peerName]) {
+    delete remoteStreams[peerName];
+  }
+  let v = document.getElementById('video_' + peerName);
+  if (v) v.remove();
 }
 
+// 6. Fine chiamata/chiusura
 if (endCallBtn) {
   endCallBtn.onclick = () => {
-    endCall();
-    if (isOperator) {
-      // Operatore: non chiudere ws, solo chiudi finestra
-    } else {
-      // Cliente: chiudi la ws (logout)
-      if (ws) {
-        ws.close();
-        ws = null;
-      }
-    }
+    ws.send(JSON.stringify({ type: 'leave' }));
+    ws.close();
+    Object.keys(peerConnections).forEach(closePeer);
+    if (localStream) localStream.getTracks().forEach(track => track.stop());
     ipcRenderer.send('call-ended');
     ipcRenderer.send('close-call-window');
   };
 }
 
+// (Optional) Gestione chiusura forzata
 ipcRenderer.on('force-end-call', () => {
-  endCall();
-  if (isOperator) {
-    // Operatore: non chiudere ws, solo chiudi finestra
-  } else {
-    // Cliente: chiudi la ws (logout)
-    if (ws) {
-      ws.close();
-      ws = null;
-    }
-  }
+  ws.send(JSON.stringify({ type: 'leave' }));
+  ws.close();
+  Object.keys(peerConnections).forEach(closePeer);
+  if (localStream) localStream.getTracks().forEach(track => track.stop());
   ipcRenderer.send('call-ended');
   ipcRenderer.send('close-call-window');
 });
-
-function endCall() {
-  ws.send(JSON.stringify({ type: 'bye' }));
-}
-
-// function endCall() {
-//   if (pc) {
-//     pc.close();
-//     pc = null;
-//   }
-//   if (localStream) {
-//     localStream.getTracks().forEach(track => track.stop());
-//     localStream = null;
-//   }
-//   if (ws) {
-//     console.log('TEST')
-//     ws.send(JSON.stringify({ type: 'bye' }));
-//     ws.close();
-//     ws = null;
-//   }
-
-//   ipcRenderer.send('call-ended');
-// }
-
-function pcRemoteDescriptionSet() {
-  return pc && pc.remoteDescription && pc.remoteDescription.type;
-}
-
-async function processIceQueue() {
-  while (iceQueue.length && pcRemoteDescriptionSet()) {
-    const candidate = iceQueue.shift();
-    try {
-      await pc.addIceCandidate(new RTCIceCandidate(candidate));
-    } catch (err) {
-      console.error("Errore nell'aggiungere ICE Candidate:", err);
-    }
-  }
-}
