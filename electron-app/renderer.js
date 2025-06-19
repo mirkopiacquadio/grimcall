@@ -106,17 +106,14 @@ function connectWebSocket() {
     }
 
     if (data.type === 'incoming-call' && isOperator) {
-      // Lato operatore: popup di chiamata
+      console.log('Ricevuta chiamata in arrivo:', data);
       document.getElementById('incomingCallPopup').style.display = 'flex';
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
 
       document.getElementById('acceptCallBtn').onclick = () => {
-        // ROOM ID UNICO → stessa roomId per tutti
-        currentRoomId = data.roomId || generateRoomIdFromNames(myName, data.from);
-        ws.send(JSON.stringify({ type: 'join', name: myName, room: currentRoomId }));
-        ipcRenderer.send('open-call-window', { self: myName, roomId: currentRoomId });
+        ws.send(JSON.stringify({ type: 'accept', from: data.from, to: myName }));
+        ipcRenderer.send('open-call-window', { from: data.from, self: myName });
         document.getElementById('incomingCallPopup').style.display = 'none';
-        isInCall = true;
       };
 
       document.getElementById('rejectCallBtn').onclick = () => {
@@ -124,7 +121,7 @@ function connectWebSocket() {
         document.getElementById('incomingCallPopup').style.display = 'none';
       };
     }
-
+    
     if (data.type === 'call-rejected') {
       alert(`${data.from} ha rifiutato la chiamata`);
     }
