@@ -129,14 +129,12 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
   remoteStreams[peerName] = null;
   iceQueue[peerName] = iceQueue[peerName] || [];
 
-  // ICE candidate → signaling
   pc.onicecandidate = event => {
     if (event.candidate) {
       ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: peerName }));
     }
   };
 
-  // Nuovo stream remoto → aggiungi un video
   pc.ontrack = event => {
     let stream = event.streams[0];
     if (!remoteStreams[peerName]) {
@@ -154,11 +152,9 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
     }
   };
 
-  // Invio local stream
   await setupLocalStream();
   localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-  // Offer/Answer logic
   if (isOfferer) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -178,6 +174,7 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
     iceQueue[peerName] = [];
   }
 }
+
 
 // 5. Chiusura peer (utente uscito)
 function closePeer(peerName) {
