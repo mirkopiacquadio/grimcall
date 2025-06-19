@@ -176,6 +176,7 @@ function renderOperators(usersOnline) {
       btn.onclick = () => {
         // Genera una roomId unica guest-operatore
         currentRoomId = generateRoomIdFromNames(myName, op);
+        ws.send(JSON.stringify({ type: 'call', target: op }));
         ws.send(JSON.stringify({ type: 'join', name: myName, room: currentRoomId }));
         ipcRenderer.send('open-call-window', { self: myName, roomId: currentRoomId });
         isInCall = true;

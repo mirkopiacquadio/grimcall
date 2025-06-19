@@ -98,17 +98,17 @@ wss.on('connection', ws => {
           ws.send(JSON.stringify({ type: 'queued' }));
           console.log(`⏳ [QUEUE] ${caller.name} added to queue for ${callee.name}`);
         } else {
-          // Genera una roomId unica (timestamp + nomi)
-          const roomId = `${Date.now()}-${caller.name}-${callee.name}`;
+          // Genera una roomId unica
+          const roomId = [caller.name, callee.name].sort().join('_');
+          // Guest entra SUBITO nella stanza (così parte la cam)
           addToRoom(roomId, caller.name);
-          addToRoom(roomId, callee.name);
-
-          callee.socket.send(JSON.stringify({ type: 'incoming-call', from: caller.name, room: roomId }));
-          callee.inCall = true;
-          callee.available = false;
           caller.inCall = true;
           caller.available = false;
           caller.roomId = roomId;
+          // Notifica popup a Mario Rossi con roomId
+          callee.socket.send(JSON.stringify({ type: 'incoming-call', from: caller.name, room: roomId }));
+          callee.inCall = false;    // Lui resta disponibile finché non accetta!
+          callee.available = true;  // (oppure false se vuoi bloccare la chiamata)
           callee.roomId = roomId;
           console.log(`📞 [CALL] ${caller.name} is calling ${callee.name} (room: ${roomId})`);
         }
@@ -116,17 +116,17 @@ wss.on('connection', ws => {
         return;
       }
 
+
       // JOIN (user entra in una room/chiamata mesh)
       if (data.type === 'join') {
         const user = getUserByName(data.name);
         if (!user) return;
-
         addToRoom(data.room, data.name);
         user.inCall = true;
         user.available = false;
         user.roomId = data.room;
 
-        // Notifica a chi join-a ORA la lista di peer già presenti (escluso se stesso)
+        // Peer-list a chi join-a ORA (tutti gli altri già in room)
         const others = getRoomPeers(data.room, data.name);
         if (others.length) {
           user.socket.send(JSON.stringify({
@@ -134,8 +134,7 @@ wss.on('connection', ws => {
             peers: others
           }));
         }
-
-        // Notifica a TUTTI nella stanza che è entrato un nuovo peer (tranne chi join-a ora)
+        // Notifica agli altri che è arrivato un nuovo peer
         others.forEach(peerName => {
           const peer = getUserByName(peerName);
           if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
@@ -145,7 +144,6 @@ wss.on('connection', ws => {
             }));
           }
         });
-
         broadcastUserList();
         return;
       }
