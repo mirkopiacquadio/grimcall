@@ -87,23 +87,22 @@ async function setupWebSocket() {
     const data = JSON.parse(e.data);
 
     if (data.type === 'peer-list') {
-      // Sei appena entrato, crea connessione verso tutti i peer già dentro (tu FAI L’OFFERTA)
+      // Appena entrato, FAI OFFER a chi già presente
       for (const peer of data.peers) {
         await connectToPeer(peer, true);
+        console.log(`[SIGNAL] Faccio OFFER a ${peer} (peer-list)`);
       }
     }
     if (data.type === 'new-peer') {
-      // Un altro peer è entrato dopo di te: tu NON fai offer, ma aspetti che la ricevi!
-      if (data.name !== myName) {
-        // Qui NON devi chiamare connectToPeer con isOfferer=false senza offer!
-        // Lascia vuoto! La offer arriverà da chi entra per ultimo.
-      }
+      // Un altro peer è entrato: tu NON fai nulla, aspetti la offer
+      console.log(`[SIGNAL] È entrato ${data.name}, attendo la sua OFFER`);
     }
     if (data.type === 'offer') {
+      console.log(`[SIGNAL] Ricevuta OFFER da ${data.from}`);
       await connectToPeer(data.from, false, data.offer);
     }
-
     if (data.type === 'answer') {
+      console.log(`[SIGNAL] Ricevuta ANSWER da ${data.from}`);
       await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
     }
     if (data.type === 'ice') {
@@ -118,6 +117,7 @@ async function setupWebSocket() {
       closePeer(data.name);
     }
   };
+
 
 }
 
