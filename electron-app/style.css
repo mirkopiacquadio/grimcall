@@ -129,6 +129,18 @@ button:hover {
   padding: 10px 30px;
 }
 
+.end-call-btn {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: green;
+  color: white;
+  font-size: 18px;
+  padding: 10px 30px;
+}
+
+
 .call-status {
   position: absolute;
   top: 20px;
