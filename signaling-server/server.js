@@ -116,6 +116,29 @@ wss.on('connection', ws => {
         return;
       }
 
+      // JOIN (user entra in una room/chiamata mesh)
+      if (data.type === 'join') {
+        const user = getUserByName(data.name);
+        if (!user) return;
+
+        // Invia notifica agli altri utenti nella stessa room (meno chi join-a ora)
+        users.forEach(u => {
+          if (u.name !== data.name && u.inCall === false && data.room && (data.room.includes(u.name))) {
+            // Solo gli utenti che NON sono già in chiamata e la room li coinvolge
+            u.socket.send(JSON.stringify({ type: 'incoming-call', from: data.name, room: data.room }));
+            u.inCall = true; // Segna subito occupato!
+            u.available = false;
+            console.log(`📞 [MESH] ${data.name} sta chiamando ${u.name} in room ${data.room}`);
+          }
+        });
+
+        user.inCall = true;
+        user.available = false;
+        user.room = data.room; // per futuro espansione
+        broadcastUserList();
+        return;
+      }
+
       // INVITE (aggiungi partecipante)
       if (data.type === 'invite') {
         const inviter = getUserBySocket(ws);

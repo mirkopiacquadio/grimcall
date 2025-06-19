@@ -5,7 +5,8 @@
     <title>GrimCall - Videochiamata</title>
     <link rel="stylesheet" href="style.css" />
     <style>
-      #addParticipantBtn, #participantsDropdown {
+      #addParticipantBtn,
+      #participantsDropdown {
         margin-left: 12px;
         vertical-align: middle;
       }
@@ -45,10 +46,10 @@
     <script src="./callRenderer.js" defer></script>
     <script>
       // INTEGRAZIONE JS per il bottone aggiungi partecipante
-      document.addEventListener('DOMContentLoaded', () => {
+      document.addEventListener("DOMContentLoaded", () => {
         const { electronAPI } = window;
-        const addBtn = document.getElementById('addParticipantBtn');
-        const dropdown = document.getElementById('participantsDropdown');
+        const addBtn = document.getElementById("addParticipantBtn");
+        const dropdown = document.getElementById("participantsDropdown");
 
         // Esempio di lista utenti disponibili da popolare dinamicamente.
         let availableUsers = [];
@@ -64,18 +65,16 @@
           if (availableUsers.length === 0) {
             dropdown.innerHTML = '<div style="padding:10px">Nessun utente da aggiungere</div>';
           } else {
-            dropdown.innerHTML = availableUsers.map(u =>
-              `<button data-username="${u}">${u}</button>`
-            ).join('');
+            dropdown.innerHTML = availableUsers.map((u) => `<button data-username="${u}">${u}</button>`).join("");
           }
-          dropdown.style.display = 'block';
+          dropdown.style.display = "block";
         };
 
         // Click su utente per aggiungerlo
-        dropdown.onclick = function(event) {
+        dropdown.onclick = function (event) {
           if (event.target.tagName === "BUTTON") {
-            const username = event.target.getAttribute('data-username');
-            dropdown.style.display = 'none';
+            const username = event.target.getAttribute("data-username");
+            dropdown.style.display = "none";
             if (window.addParticipantToCall) {
               window.addParticipantToCall(username);
             }
@@ -83,9 +82,9 @@
         };
 
         // Chiudi dropdown su click fuori
-        document.body.addEventListener('mousedown', function(event) {
+        document.body.addEventListener("mousedown", function (event) {
           if (!dropdown.contains(event.target) && event.target !== addBtn) {
-            dropdown.style.display = 'none';
+            dropdown.style.display = "none";
           }
         });
       });
