@@ -85,7 +85,7 @@ wss.on('connection', ws => {
         return;
       }
 
-      // CALL (inizia una nuova room)
+      // CALL (inizia una nuova room, solo chiama invia join subito!)
       if (data.type === 'call') {
         const caller = getUserBySocket(ws);
         const callee = getUserByName(data.target);
@@ -98,52 +98,47 @@ wss.on('connection', ws => {
           ws.send(JSON.stringify({ type: 'queued' }));
           console.log(`⏳ [QUEUE] ${caller.name} added to queue for ${callee.name}`);
         } else {
-          // Genera una roomId unica
+          // Genera roomId
           const roomId = [caller.name, callee.name].sort().join('_');
-          // Guest entra SUBITO nella stanza (così parte la cam)
-          addToRoom(roomId, caller.name);
-          caller.inCall = true;
-          caller.available = false;
-          caller.roomId = roomId;
-          // Notifica popup a Mario Rossi con roomId
+          // Guest invia join da client, NON lo aggiungi tu qui server-side!
+          // Operatore NON ancora inCall, NON in room!
+          // Solo notifica
           callee.socket.send(JSON.stringify({ type: 'incoming-call', from: caller.name, room: roomId }));
-          callee.inCall = false;    // Lui resta disponibile finché non accetta!
-          callee.available = true;  // (oppure false se vuoi bloccare la chiamata)
-          callee.roomId = roomId;
+          // caller.inCall = true;   // NO!
+          // callee.inCall = true;   // NO!
+          // caller.available = false; // NO!
+          // callee.available = false; // NO!
+          // NON aggiungi in room qui
+          // Salva la roomId lato guest per sicurezza, puoi farlo dopo il suo join
+          caller.roomId = roomId;
           console.log(`📞 [CALL] ${caller.name} is calling ${callee.name} (room: ${roomId})`);
         }
         broadcastUserList();
         return;
       }
 
-
-      // JOIN (user entra in una room/chiamata mesh)
       if (data.type === 'join') {
         const user = getUserByName(data.name);
         if (!user) return;
-        addToRoom(data.room, data.name);
+
+        addToRoom(data.room, user.name);
         user.inCall = true;
         user.available = false;
         user.roomId = data.room;
 
-        // Peer-list a chi join-a ORA (tutti gli altri già in room)
-        const others = getRoomPeers(data.room, data.name);
-        if (others.length) {
-          user.socket.send(JSON.stringify({
-            type: 'peer-list',
-            peers: others
-          }));
+        // Invio la lista peer agli altri nella stanza
+        const peers = getRoomPeers(data.room, user.name);
+        if (user.socket && user.socket.readyState === WebSocket.OPEN) {
+          user.socket.send(JSON.stringify({ type: 'peer-list', peers }));
         }
-        // Notifica agli altri che è arrivato un nuovo peer
-        others.forEach(peerName => {
+        // Avviso chi è già in stanza che è entrato un nuovo peer
+        peers.forEach(peerName => {
           const peer = getUserByName(peerName);
           if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
-            peer.socket.send(JSON.stringify({
-              type: 'new-peer',
-              name: data.name
-            }));
+            peer.socket.send(JSON.stringify({ type: 'new-peer', name: user.name }));
           }
         });
+
         broadcastUserList();
         return;
       }
