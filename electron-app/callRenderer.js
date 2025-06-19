@@ -60,8 +60,9 @@ ipcRenderer.on('call-data', async (event, data) => {
   roomId = data.roomId || 'room-default';
   await setupWebSocket();
   await setupLocalStream();
+  // Ecco il join subito all’apertura della callWindow!
+  ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
 });
-
 // 2. Setup media
 async function setupLocalStream() {
   if (localStream) return;

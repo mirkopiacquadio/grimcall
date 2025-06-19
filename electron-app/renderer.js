@@ -178,15 +178,11 @@ function renderOperators(usersOnline) {
       const btn = document.createElement('button');
       btn.innerText = 'Chiama';
       btn.onclick = () => {
-        // Genera roomId unico (come già fa)
+        // 1. Invia la richiesta di chiamata (NOTIFICA popup operatore)
         currentRoomId = generateRoomIdFromNames(myName, op);
-
-        // 1. Apri subito la callWindow col messaggio "Sto chiamando..."
+        ws.send(JSON.stringify({ type: 'call', target: op }));
+        // 2. Subito dopo, apri la finestra di chiamata e fai join nella room
         ipcRenderer.send('open-call-window', { self: myName, roomId: currentRoomId });
-
-        // 2. Subito dopo manda il JOIN (entra già nella room anche se l’operatore non ha accettato)
-        ws.send(JSON.stringify({ type: 'join', name: myName, room: currentRoomId }));
-
         isInCall = true;
       };
       card.appendChild(btn);
@@ -195,6 +191,7 @@ function renderOperators(usersOnline) {
     container.appendChild(card);
   });
 }
+
 
 // Kiosk: easter egg per uscire
 const welcomeTitle = document.getElementById("grimTitle");
