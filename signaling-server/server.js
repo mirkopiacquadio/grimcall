@@ -121,20 +121,31 @@ wss.on('connection', ws => {
         const user = getUserByName(data.name);
         if (!user) return;
 
-        // Invia notifica agli altri utenti nella stessa room (meno chi join-a ora)
-        users.forEach(u => {
-          if (u.name !== data.name && u.inCall === false && data.room && (data.room.includes(u.name))) {
-            // Solo gli utenti che NON sono già in chiamata e la room li coinvolge
-            u.socket.send(JSON.stringify({ type: 'incoming-call', from: data.name, room: data.room }));
-            u.inCall = true; // Segna subito occupato!
-            u.available = false;
-            console.log(`📞 [MESH] ${data.name} sta chiamando ${u.name} in room ${data.room}`);
+        addToRoom(data.room, data.name);
+        user.inCall = true;
+        user.available = false;
+        user.roomId = data.room;
+
+        // Notifica a chi join-a ORA la lista di peer già presenti (escluso se stesso)
+        const others = getRoomPeers(data.room, data.name);
+        if (others.length) {
+          user.socket.send(JSON.stringify({
+            type: 'peer-list',
+            peers: others
+          }));
+        }
+
+        // Notifica a TUTTI nella stanza che è entrato un nuovo peer (tranne chi join-a ora)
+        others.forEach(peerName => {
+          const peer = getUserByName(peerName);
+          if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
+            peer.socket.send(JSON.stringify({
+              type: 'new-peer',
+              name: data.name
+            }));
           }
         });
 
-        user.inCall = true;
-        user.available = false;
-        user.room = data.room; // per futuro espansione
         broadcastUserList();
         return;
       }
