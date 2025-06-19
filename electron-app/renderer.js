@@ -111,8 +111,12 @@ function connectWebSocket() {
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
 
       document.getElementById('acceptCallBtn').onclick = () => {
-        ws.send(JSON.stringify({ type: 'accept', from: data.from, to: myName }));
-        ipcRenderer.send('open-call-window', { from: data.from, self: myName });
+        // 1. Apre la callWindow, anche qui serve passare la roomId
+        ipcRenderer.send('open-call-window', { from: data.from, self: myName, roomId: data.room });
+
+        // 2. Manda il join!
+        ws.send(JSON.stringify({ type: 'join', name: myName, room: data.room }));
+
         document.getElementById('incomingCallPopup').style.display = 'none';
       };
 
@@ -121,7 +125,7 @@ function connectWebSocket() {
         document.getElementById('incomingCallPopup').style.display = 'none';
       };
     }
-    
+
     if (data.type === 'call-rejected') {
       alert(`${data.from} ha rifiutato la chiamata`);
     }
@@ -174,11 +178,15 @@ function renderOperators(usersOnline) {
       const btn = document.createElement('button');
       btn.innerText = 'Chiama';
       btn.onclick = () => {
-        // Genera una roomId unica guest-operatore
+        // Genera roomId unico (come già fa)
         currentRoomId = generateRoomIdFromNames(myName, op);
-        ws.send(JSON.stringify({ type: 'call', target: op }));
-        ws.send(JSON.stringify({ type: 'join', name: myName, room: currentRoomId }));
+
+        // 1. Apri subito la callWindow col messaggio "Sto chiamando..."
         ipcRenderer.send('open-call-window', { self: myName, roomId: currentRoomId });
+
+        // 2. Subito dopo manda il JOIN (entra già nella room anche se l’operatore non ha accettato)
+        ws.send(JSON.stringify({ type: 'join', name: myName, room: currentRoomId }));
+
         isInCall = true;
       };
       card.appendChild(btn);
