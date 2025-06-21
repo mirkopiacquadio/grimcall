@@ -59,8 +59,26 @@ function setupWebSocket() {
 
   ws.onmessage = async (e) => {
     let data;
-    try { data = JSON.parse(e.data); }
-    catch (err) { console.error('[WS] JSON error', err, e.data); return; }
+    if (typeof event.data === "string") {
+      try {
+        data = JSON.parse(event.data);
+      } catch (err) {
+        console.error("[WS] JSON error (string):", err, event.data);
+        return;
+      }
+    } else if (event.data instanceof Blob) {
+      try {
+        const text = await event.data.text();
+        data = JSON.parse(text);
+      } catch (err) {
+        console.error("[WS] JSON error (blob):", err, event.data);
+        return;
+      }
+    } else {
+      console.error("[WS] Messaggio non gestito:", event.data);
+      return;
+    }
+
 
     // --- Mesh: chi entra riceve peers, chi è già in stanza riceve new-peer ---
     if (data.type === 'peer-list') {
@@ -96,7 +114,7 @@ function setupWebSocket() {
     }
   };
 
-  ws.onclose = () => {};
+  ws.onclose = () => { };
   ws.onerror = (err) => { console.error('[WS] error', err); };
 }
 
