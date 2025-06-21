@@ -87,6 +87,7 @@ function connectWebSocket() {
 
   ws.onmessage = async (msg) => {
     let data;
+    console.log('[SIGNAL] redender.js onmessage', data);
     if (typeof msg.data === "string") {
       data = JSON.parse(msg.data);
     } else if (msg.data instanceof Blob) {

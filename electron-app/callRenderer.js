@@ -65,6 +65,7 @@ ipcRenderer.on('call-data', async (event, data) => {
 });
 // 2. Setup media
 async function setupLocalStream() {
+  console.log(`[MEDIA] localStream ottenuto:`, localStream);
   if (localStream) return;
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -85,6 +86,7 @@ async function setupWebSocket() {
 
   ws.onmessage = async e => {
     const data = JSON.parse(e.data);
+    console.log('[SIGNAL] onmessage', data);
 
     if (data.type === 'peer-list') {
       // Appena entrato, FAI OFFER a chi già presente
@@ -123,6 +125,11 @@ async function setupWebSocket() {
 
 // 4. Connessione a un altro peer
 async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
+  console.log(`[PEER] connectToPeer: peerName=${peerName}, isOfferer=${isOfferer}, myName=${myName}, roomId=${roomId}`);
+  if (peerConnections[peerName]) {
+    console.log(`[PEER] Già connesso a ${peerName}, ignoro`);
+    return;
+  }
   if (peerConnections[peerName]) return; // già connesso
 
   // Crea peerConnection
@@ -138,6 +145,7 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
   };
 
   pc.ontrack = event => {
+    console.log(`[TRACK] Ricevuto track da ${peerName}`, event);
     let stream = event.streams[0];
     if (!remoteStreams[peerName]) {
       remoteStreams[peerName] = stream;
