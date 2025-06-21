@@ -58,11 +58,10 @@ function makeRemoteVideosContainer() {
 ipcRenderer.on('call-data', async (event, data) => {
   myName = data.self;
   roomId = data.roomId || 'room-default';
-  await setupWebSocket();
   await setupLocalStream();
-  // Ecco il join subito all’apertura della callWindow!
-  ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
+  setupWebSocket(); // Non serve await qui!
 });
+
 // 2. Setup media
 async function setupLocalStream() {
   if (localStream) {
@@ -82,52 +81,20 @@ async function setupLocalStream() {
 
 // 3. Signaling WebSocket
 async function setupWebSocket() {
-  if (!ws || ws.readyState !== 1) {
-    ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
-    };
-  } else {
+  ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
+  ws.onopen = () => {
+    console.log('[WS] OPEN! Faccio JOIN');
     ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
-  }
-  
+  };
+
   ws.onmessage = async e => {
     const data = JSON.parse(e.data);
     console.log('[SIGNAL] onmessage', data);
-
-    if (data.type === 'peer-list') {
-      // Appena entrato, FAI OFFER a chi già presente
-      for (const peer of data.peers) {
-        await connectToPeer(peer, true);
-        console.log(`[SIGNAL] Faccio OFFER a ${peer} (peer-list)`);
-      }
-    }
-    if (data.type === 'new-peer') {
-      // Un altro peer è entrato: tu NON fai nulla, aspetti la offer
-      console.log(`[SIGNAL] È entrato ${data.name}, attendo la sua OFFER`);
-    }
-    if (data.type === 'offer') {
-      console.log(`[SIGNAL] Ricevuta OFFER da ${data.from}`);
-      await connectToPeer(data.from, false, data.offer);
-    }
-    if (data.type === 'answer') {
-      console.log(`[SIGNAL] Ricevuta ANSWER da ${data.from}`);
-      await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
-    }
-    if (data.type === 'ice') {
-      if (!peerConnections[data.from]) {
-        if (!iceQueue[data.from]) iceQueue[data.from] = [];
-        iceQueue[data.from].push(data.candidate);
-      } else {
-        await peerConnections[data.from].addIceCandidate(new RTCIceCandidate(data.candidate));
-      }
-    }
-    if (data.type === 'peer-left') {
-      closePeer(data.name);
-    }
+    // ...resto come già scritto...
   };
 
-
+  ws.onclose = () => { console.log('[WS] closed'); };
+  ws.onerror = (err) => { console.error('[WS] error', err); };
 }
 
 // 4. Connessione a un altro peer
