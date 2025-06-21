@@ -1,151 +1,146 @@
 const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 3000 });
 
-let users = [];              // [{ name, socket, roomId, inCall }]
-let rooms = {};              // { roomId: [userName, ...] }
+let users = [];
+let rooms = {}; // { roomId: [user1, user2, ...] }
+let queue = [];
 
-console.log("🚀 [SERVER] Mesh WebRTC server avviato");
+console.log("🚀 [SERVER] WebSocket server started on port 3000");
 
-function getUserBySocket(ws) {
-  return users.find(u => u.socket === ws);
-}
-function getUserByName(name) {
-  return users.find(u => u.name === name);
-}
-function broadcastUserList() {
-  const payload = {
-    type: 'userlist',
-    users: users.map(u => ({
-      name: u.name,
-      available: !u.inCall,
-    })),
-  };
-  users.forEach(u => {
-    if (u.socket && u.socket.readyState === WebSocket.OPEN) {
-      u.socket.send(JSON.stringify(payload));
-    }
-  });
-}
-
-function addToRoom(roomId, userName) {
+// Helpers
+function getUserBySocket(ws) { return users.find(u => u.socket === ws); }
+function getUserByName(name) { return users.find(u => u.name === name); }
+function addToRoom(roomId, name) {
   if (!rooms[roomId]) rooms[roomId] = [];
-  if (!rooms[roomId].includes(userName)) rooms[roomId].push(userName);
+  if (!rooms[roomId].includes(name)) rooms[roomId].push(name);
 }
-function removeFromRoom(roomId, userName) {
+function removeFromRoom(roomId, name) {
   if (!rooms[roomId]) return;
-  rooms[roomId] = rooms[roomId].filter(u => u !== userName);
+  rooms[roomId] = rooms[roomId].filter(n => n !== name);
   if (rooms[roomId].length === 0) delete rooms[roomId];
 }
 function getRoomPeers(roomId, exclude) {
   return (rooms[roomId] || []).filter(u => u !== exclude);
 }
+function broadcastUserList() {
+  const payload = {
+    type: 'userlist',
+    users: users.map(u => ({ name: u.name, available: u.available })),
+  };
+  users.forEach(u => {
+    if (u.socket?.readyState === WebSocket.OPEN) {
+      u.socket.send(JSON.stringify(payload));
+    }
+  });
+  console.log("📡 [BROADCAST] User list sent:", payload.users);
+}
 
+// Connection handler
 wss.on('connection', ws => {
   console.log("🟢 [CONNECT] New client connected");
 
   ws.on('message', msg => {
     try {
       const data = JSON.parse(msg);
-      // LOGIN: name
+      console.log("📨 [RECV]", data);
+
+      // --- LOGIN ---
       if (data.type === 'login') {
-        let existingUser = getUserByName(data.name);
-        if (existingUser) {
-          existingUser.socket = ws;
-          existingUser.inCall = false;
+        let existing = getUserByName(data.name);
+        if (existing) {
+          existing.socket = ws;
+          existing.available = true;
+          existing.inCall = false;
         } else {
-          users.push({
-            name: data.name,
-            socket: ws,
-            inCall: false,
-            roomId: null,
-          });
+          users.push({ name: data.name, socket: ws, available: true, inCall: false });
         }
+        console.log(`✅ [LOGIN] ${data.name} logged in`);
         broadcastUserList();
         return;
       }
 
-      // CALL (guest chiede di avviare una room)
+      // --- CALL: Avvio chiamata a 2 (solo guest/operator) ---
       if (data.type === 'call') {
         const caller = getUserBySocket(ws);
         const callee = getUserByName(data.target);
         if (!caller || !callee) return;
-        // Crea roomId (sempre guest+callee)
+        // Genera roomId solo per questi due
         const roomId = [caller.name, callee.name].sort().join('_');
-        // Notifica all’operatore: chiamata in arrivo
+        // Notifica callee (operatore)
         callee.socket.send(JSON.stringify({ type: 'incoming-call', from: caller.name, room: roomId }));
+        // Guest invia subito join da client, operator farà join quando accetta
         caller.roomId = roomId;
         callee.roomId = roomId;
+        broadcastUserList();
         return;
       }
 
-      // JOIN room (chiunque entra in room, mesh mode!)
+      // --- INVITE: Espandi la mesh SOLO quando clicchi “Aggiungi partecipante” ---
+      if (data.type === 'invite') {
+        const inviter = getUserBySocket(ws);
+        const invited = getUserByName(data.to);
+        if (!inviter || !invited) return;
+        // NON aggiungere subito in room! Solo notifica
+        invited.socket.send(JSON.stringify({
+          type: 'incoming-call',
+          from: inviter.name,
+          room: data.room,
+          invite: true
+        }));
+        console.log(`[INVITE] ${inviter.name} invita ${invited.name} nella room ${data.room}`);
+        return;
+      }
+
+      // --- JOIN: chiunque fa join entra in mesh per room ---
       if (data.type === 'join') {
         const user = getUserByName(data.name);
         if (!user) return;
         addToRoom(data.room, user.name);
         user.inCall = true;
+        user.available = false;
         user.roomId = data.room;
-
-        // Invio peer-list SOLO ai nuovi entrati
+        console.log(`[ROOM] Dopo join: ${data.room} =`, rooms[data.room]);
+        // Invia la peer-list solo a chi ha joinato (mesh style)
         const peers = getRoomPeers(data.room, user.name);
-        if (user.socket && user.socket.readyState === WebSocket.OPEN) {
+        if (user.socket?.readyState === WebSocket.OPEN) {
           user.socket.send(JSON.stringify({ type: 'peer-list', peers }));
         }
-
-        // Avviso tutti gli altri nella room del nuovo peer (così fanno l’offer verso di lui)
+        // Notifica agli altri peer in room (così sanno di dover creare connessione mesh)
         peers.forEach(peerName => {
           const peer = getUserByName(peerName);
-          if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
+          if (peer?.socket?.readyState === WebSocket.OPEN) {
             peer.socket.send(JSON.stringify({ type: 'new-peer', name: user.name }));
           }
         });
-
         broadcastUserList();
         return;
       }
 
-      // INVITE: aggiungi un altro utente in room
-      if (data.type === 'invite') {
-        const inviter = getUserBySocket(ws);
-        const invited = getUserByName(data.to);
-        if (!inviter || !invited) return;
-        const roomId = data.room;
-        addToRoom(roomId, invited.name);
-        invited.roomId = roomId;
-        invited.inCall = true;
-        invited.socket.send(JSON.stringify({
-          type: 'incoming-call',
-          from: inviter.name,
-          room: roomId,
-          invite: true
-        }));
-        broadcastUserList();
-        return;
-      }
-
-      // OFFER/ANSWER/ICE: relay signaling verso target
+      // --- RELAY segnalazione WebRTC in mesh (offer, answer, ice) ---
       if (["offer", "answer", "ice"].includes(data.type)) {
         const peer = getUserByName(data.to);
-        if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
+        if (peer?.socket?.readyState === WebSocket.OPEN) {
           peer.socket.send(msg);
+          console.log(`🔀 [RELAY] ${data.type} relayed from ${getUserBySocket(ws)?.name} to ${peer.name}`);
         }
         return;
       }
 
-      // END (utente lascia la room)
-      if (data.type === 'leave' || data.type === 'end' || data.type === 'bye') {
+      // --- END CALL ---
+      if (data.type === 'end' || data.type === 'bye' || data.type === 'leave') {
         const user = getUserBySocket(ws);
         if (user && user.roomId) {
           const roomId = user.roomId;
           removeFromRoom(roomId, user.name);
           user.inCall = false;
-          user.roomId = null;
-          // Avvisa tutti nella stanza che è uscito
+          user.available = true;
+          delete user.roomId;
+          // Notifica agli altri nella room
           getRoomPeers(roomId).forEach(userName => {
             const peer = getUserByName(userName);
-            if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
+            if (peer?.socket?.readyState === WebSocket.OPEN) {
               peer.socket.send(JSON.stringify({
-                type: 'peer-left',
+                type: 'participant-left',
                 name: user.name,
                 room: roomId
               }));
@@ -162,11 +157,9 @@ wss.on('connection', ws => {
   });
 
   ws.on('close', () => {
-    const disconnectedUser = getUserBySocket(ws);
-    if (disconnectedUser) {
-      if (disconnectedUser.roomId) {
-        removeFromRoom(disconnectedUser.roomId, disconnectedUser.name);
-      }
+    const disconnected = getUserBySocket(ws);
+    if (disconnected) {
+      Object.keys(rooms).forEach(roomId => removeFromRoom(roomId, disconnected.name));
       users = users.filter(u => u.socket !== ws);
       broadcastUserList();
     }
