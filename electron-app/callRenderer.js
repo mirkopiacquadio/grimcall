@@ -82,12 +82,15 @@ async function setupLocalStream() {
 
 // 3. Signaling WebSocket
 async function setupWebSocket() {
-  ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
-  // ws = new WebSocket('ws://localhost:3000');
-  ws.onopen = () => {
+  if (!ws || ws.readyState !== 1) {
+    ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
+    };
+  } else {
     ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
-  };
-
+  }
+  
   ws.onmessage = async e => {
     const data = JSON.parse(e.data);
     console.log('[SIGNAL] onmessage', data);

@@ -125,12 +125,14 @@ wss.on('connection', ws => {
         user.inCall = true;
         user.available = false;
         user.roomId = data.room;
+        console.log(`[ROOM] Dopo join: ${data.room} =`, rooms[data.room]);
 
         // Invio la lista peer agli altri nella stanza
         const peers = getRoomPeers(data.room, user.name);
         if (user.socket && user.socket.readyState === WebSocket.OPEN) {
           user.socket.send(JSON.stringify({ type: 'peer-list', peers }));
         }
+        console.log(`[SIGNAL] Inviata peer-list a ${user.name} -> peers:`, peers);
         // Avviso chi è già in stanza che è entrato un nuovo peer
         peers.forEach(peerName => {
           const peer = getUserByName(peerName);
@@ -149,6 +151,7 @@ wss.on('connection', ws => {
         const invited = getUserByName(data.to);
         if (!inviter || !invited) return;
         addToRoom(data.room, invited.name);
+         console.log(`[ROOM] Dopo invite: ${data.room} =`, rooms[data.room]);
         invited.socket.send(JSON.stringify({
           type: 'incoming-call',
           from: inviter.name,
