@@ -188,7 +188,10 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
     log("[TRACK] ontrack event received", event);
     if (event.streams && event.streams[0]) {
       remoteStreams[peerName] = event.streams[0];
-      let v = document.getElementById('video_' + peerName);
+      // PRIMA soluzione: se esiste remoteVideo usalo, ALTRIMENTI crea dinamico
+      let v = document.getElementById('remoteVideo') ||
+        document.getElementById('video_' + peerName);
+
       if (!v) {
         v = document.createElement('video');
         v.id = 'video_' + peerName;
