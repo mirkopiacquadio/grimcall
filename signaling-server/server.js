@@ -7,13 +7,8 @@ let queue = [];
 
 console.log("🚀 [SERVER] WebSocket server started on port 3000");
 
-// Helpers
-function getUserBySocket(ws) {
-  return users.find(u => u.socket === ws);
-}
-function getUserByName(name) {
-  return users.find(u => u.name === name);
-}
+function getUserBySocket(ws) { return users.find(u => u.socket === ws); }
+function getUserByName(name) { return users.find(u => u.name === name); }
 function broadcastUserList() {
   const payload = {
     type: 'userlist',
@@ -71,29 +66,25 @@ wss.on('connection', ws => {
         return;
       }
 
-      // CALL (inizia una nuova room, solo chiama invia join subito!)
+      // CALL (l'utente Guest vuole chiamare un operatore)
       if (data.type === 'call') {
         const caller = getUserBySocket(ws);
         const callee = getUserByName(data.target);
-        if (!caller || !callee) {
-          console.log("❌ [CALL] Caller or callee not found");
-          return;
-        }
-        if (!callee.available || callee.inCall) {
-          ws.send(JSON.stringify({ type: 'queued' }));
-        } else {
-          const roomId = [caller.name, callee.name].sort().join('_');
-          callee.socket.send(JSON.stringify({ type: 'incoming-call', from: caller.name, room: roomId }));
-          caller.roomId = roomId;
-          console.log(`📞 [CALL] ${caller.name} is calling ${callee.name} (room: ${roomId})`);
-        }
+        if (!caller || !callee) return;
+        // Genera roomId
+        const roomId = [caller.name, callee.name].sort().join('_');
+        callee.socket.send(JSON.stringify({ type: 'incoming-call', from: caller.name, room: roomId }));
+        caller.roomId = roomId;
+        console.log(`📞 [CALL] ${caller.name} is calling ${callee.name} (room: ${roomId})`);
         broadcastUserList();
         return;
       }
 
+      // JOIN (partecipante entra in room)
       if (data.type === 'join') {
         const user = getUserByName(data.name);
         if (!user) return;
+
         addToRoom(data.room, user.name);
         user.inCall = true;
         user.available = false;
@@ -118,19 +109,18 @@ wss.on('connection', ws => {
         return;
       }
 
-      // OFFER/ANSWER/ICE (relay con info stanza)
+      // OFFER/ANSWER/ICE (relay verso il target)
       if (["offer", "answer", "ice"].includes(data.type)) {
-        // In una mesh room, il messaggio va girato solo al target
         const peer = getUserByName(data.to);
         if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
-          peer.socket.send(msg);
+          peer.socket.send(msg); // relay diretto!
           console.log(`🔀 [RELAY] ${data.type} relayed from ${getUserBySocket(ws)?.name} to ${peer.name}`);
         }
         return;
       }
 
-      // LEAVE (fine chiamata)
-      if (data.type === 'leave') {
+      // END/BYE (utente lascia la chiamata)
+      if (data.type === 'leave' || data.type === 'end' || data.type === 'bye') {
         const user = getUserBySocket(ws);
         if (user && user.roomId) {
           const roomId = user.roomId;
@@ -138,6 +128,7 @@ wss.on('connection', ws => {
           user.inCall = false;
           user.available = true;
           delete user.roomId;
+          console.log(`🔚 [END] ${user.name} left room ${roomId}`);
           getRoomPeers(roomId).forEach(userName => {
             const peer = getUserByName(userName);
             if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
