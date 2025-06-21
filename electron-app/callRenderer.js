@@ -105,20 +105,22 @@ function setupWebSocket() {
       }
     }
     if (data.type === 'ice') {
-      log('ICE from', data.from);
-      if (!peerConnections[data.from]) {
+      const pc = peerConnections[data.from];
+      if (!pc || !pc.remoteDescription || !pc.remoteDescription.type) {
+        // Peer connection non ancora pronta: metti in coda
         if (!iceQueue[data.from]) iceQueue[data.from] = [];
         iceQueue[data.from].push(data.candidate);
-        log('Queued ICE for', data.from);
+        console.log("[CALL] ICE candidate QUEUED for", data.from);
       } else {
         try {
-          await peerConnections[data.from].addIceCandidate(new RTCIceCandidate(data.candidate));
-          log('Added ICE candidate from', data.from);
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          console.log("[CALL] ICE candidate ADDED for", data.from);
         } catch (err) {
-          log('addIceCandidate failed:', err);
+          console.warn("[CALL] ICE candidate FAILED for", data.from, err);
         }
       }
     }
+
     if (data.type === 'incoming-call' && data.invite) {
       log('Sei stato invitato a una chiamata!', data);
       // TODO: UI per accetta/rifiuta
@@ -198,11 +200,19 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
   } else if (remoteOffer) {
     log('Ricevuto offer, imposto remoteDesc verso', peerName);
     try {
-      await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      ws.send(JSON.stringify({ type: 'answer', answer, to: peerName }));
-      log('Answer inviata a', peerName);
+      await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer || data.answer));
+      // Dopo che la remoteDescription è settata
+      if (iceQueue[peerName]?.length) {
+        for (const candidate of iceQueue[peerName]) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            console.log("[CALL] ICE candidate ADDED from queue for", peerName);
+          } catch (err) {
+            console.warn("[CALL] ICE candidate from queue FAILED for", peerName, err);
+          }
+        }
+        iceQueue[peerName] = [];
+      }
     } catch (err) {
       log('Errore in risposta offer:', err);
     }

@@ -118,10 +118,12 @@ wss.on('connection', ws => {
 
       // --- RELAY segnalazione WebRTC in mesh (offer, answer, ice) ---
       if (["offer", "answer", "ice"].includes(data.type)) {
-        const peer = getUserByName(data.to);
+        const sender = getUserBySocket(ws); // chi ha mandato il messaggio
+        const peer = getUserByName(data.to); // chi deve ricevere
         if (peer?.socket?.readyState === WebSocket.OPEN) {
-          peer.socket.send(msg);
-          console.log(`🔀 [RELAY] ${data.type} relayed from ${getUserBySocket(ws)?.name} to ${peer.name}`);
+          const relayMsg = { ...data, from: sender?.name };
+          peer.socket.send(JSON.stringify(relayMsg));
+          console.log(`🔀 [RELAY] ${data.type} relayed from ${sender?.name} to ${peer.name}`);
         }
         return;
       }
