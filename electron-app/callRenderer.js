@@ -65,7 +65,7 @@ ipcRenderer.on('call-data', async (event, data) => {
 // 2. Signaling WebSocket – versione robusta!
 function setupWebSocket() {
   ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
-  
+
   ws.onopen = () => {
     console.log('[WS] OPEN! Faccio JOIN');
     ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
@@ -113,6 +113,23 @@ function setupWebSocket() {
   ws.onclose = () => { console.log('[WS] closed'); };
   ws.onerror = (err) => { console.error('[WS] error', err); };
 }
+
+async function setupLocalStream() {
+  if (localStream) {
+    console.log("[MEDIA] localStream già esistente:", localStream);
+    return;
+  }
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localVideo.srcObject = localStream;
+    console.log(`[MEDIA] localStream ottenuto OK:`, localStream);
+  } catch (err) {
+    console.error("Errore accesso webcam/microfono", err);
+    alert("Errore accesso webcam/microfono: " + err.message);
+    throw err;
+  }
+}
+
 
 // 3. Signaling WebSocket
 async function setupWebSocket() {
