@@ -130,25 +130,6 @@ async function setupLocalStream() {
   }
 }
 
-
-// 3. Signaling WebSocket
-async function setupWebSocket() {
-  ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
-  ws.onopen = () => {
-    console.log('[WS] OPEN! Faccio JOIN');
-    ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
-  };
-
-  ws.onmessage = async e => {
-    const data = JSON.parse(e.data);
-    console.log('[SIGNAL] onmessage', data);
-    // ...resto come già scritto...
-  };
-
-  ws.onclose = () => { console.log('[WS] closed'); };
-  ws.onerror = (err) => { console.error('[WS] error', err); };
-}
-
 // 4. Connessione a un altro peer
 async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
   console.log(`[PEER] connectToPeer: peerName=${peerName}, isOfferer=${isOfferer}, myName=${myName}, roomId=${roomId}`);
