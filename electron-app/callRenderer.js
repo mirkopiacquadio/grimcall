@@ -80,6 +80,7 @@ function setupWebSocket() {
       return;
     }
     log('MSG', data);
+    console.log('MSG', JSON.stringify(data, null, 2));
 
     // === HANDLE SIGNALING ===
     if (data.type === 'peer-list') {
@@ -163,6 +164,7 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
   };
 
   pc.ontrack = event => {
+    console.log("[CALL] ontrack event received", event);
     log('ontrack da', peerName, event.streams);
     let stream = event.streams[0];
     if (!remoteStreams[peerName]) {
@@ -201,6 +203,7 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
     log('Ricevuto offer, imposto remoteDesc verso', peerName);
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer || data.answer));
+      console.log("[CALL] RemoteDescription set, flushing ICE queue", peerName, iceQueue[peerName]);
       // Dopo che la remoteDescription è settata
       if (iceQueue[peerName]?.length) {
         for (const candidate of iceQueue[peerName]) {
