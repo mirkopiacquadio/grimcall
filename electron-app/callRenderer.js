@@ -7,24 +7,17 @@ let localStream;
 let peerConnections = {}; // { peerName: RTCPeerConnection }
 let remoteStreams = {};   // { peerName: MediaStream }
 let iceQueue = {};        // { peerName: [candidate, ...] }
+let peers = {};           // Per la dropdown, tiene traccia dei peer
 
 const localVideo = document.getElementById('localVideo');
 const remoteVideos = document.getElementById('remoteVideos') || makeRemoteVideosContainer();
 const callStatus = document.getElementById('callStatus');
 const endCallBtn = document.getElementById('endCallBtn');
 
-// In callRenderer.js
-// Elenco utenti connessi ma NON già in chiamata
+// Dropdown utenti disponibili
 window.requestAvailableUsersForDropdown = () => {
-  // In un caso reale, qui dovresti avere una lista di utenti disponibili, esclusi quelli già in roomId
-  // Esempio banale: 
-  // window.setAvailableUsersForDropdown(["Laura Bianchi", "Marco Neri"]);
-  // In un'app vera: aggiorna da WebSocket/userlist!
-
-  // Placeholder: metti qui la logica per popolare la lista giusta!
   if (window.lastUserList) {
-    // Esempio: filtra chi non è già nella chiamata
-    const alreadyInCall = Object.keys(peers); // peers dev'essere globale in mesh
+    const alreadyInCall = Object.keys(peers);
     const filtered = window.lastUserList.filter(
       name => !alreadyInCall.includes(name) && name !== myName
     );
@@ -34,15 +27,10 @@ window.requestAvailableUsersForDropdown = () => {
   }
 };
 
-// Handler che avvia la finestra per l’utente scelto
 window.addParticipantToCall = (username) => {
-  // Invii segnale al main process per aprire la finestra anche su quell’utente
-  // (ad esempio, tramite WebSocket: invii un "invite" con roomId e username)
-  ws.send(JSON.stringify({ type: 'invite', to: username, room: currentRoomId }));
+  ws.send(JSON.stringify({ type: 'invite', to: username, room: roomId }));
 };
 
-
-// Utility per creare dinamicamente il container se non esiste
 function makeRemoteVideosContainer() {
   const d = document.createElement('div');
   d.id = 'remoteVideos';
@@ -54,7 +42,6 @@ function makeRemoteVideosContainer() {
   return d;
 }
 
-// 1. Ingresso dati chiamata (il resto del file resta UGUALE)
 ipcRenderer.on('call-data', async (event, data) => {
   myName = data.self;
   roomId = data.roomId || 'room-default';
@@ -62,7 +49,6 @@ ipcRenderer.on('call-data', async (event, data) => {
   setupWebSocket();
 });
 
-// 2. Signaling WebSocket – versione robusta!
 function setupWebSocket() {
   ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
 
@@ -72,7 +58,6 @@ function setupWebSocket() {
   };
 
   ws.onmessage = async (e) => {
-    // LOG RAW: così vediamo sempre TUTTO!
     console.log('[WS] RAW onmessage:', e.data);
     let data;
     try { data = JSON.parse(e.data); }
@@ -81,19 +66,25 @@ function setupWebSocket() {
     console.log('[SIGNAL] onmessage', data);
 
     if (data.type === 'peer-list') {
+      // SOLO chi entra dopo fa OFFER!
       for (const peer of data.peers) {
+        peers[peer] = true;
         await connectToPeer(peer, true);
         console.log(`[SIGNAL] Faccio OFFER a ${peer} (peer-list)`);
       }
     }
     if (data.type === 'new-peer') {
+      // Aggiorna lista, non fare OFFER
+      peers[data.name] = true;
       console.log(`[SIGNAL] È entrato ${data.name}, attendo la sua OFFER`);
     }
     if (data.type === 'offer') {
+      peers[data.from] = true;
       console.log(`[SIGNAL] Ricevuta OFFER da ${data.from}`);
       await connectToPeer(data.from, false, data.offer);
     }
     if (data.type === 'answer') {
+      peers[data.from] = true;
       console.log(`[SIGNAL] Ricevuta ANSWER da ${data.from}`);
       await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
     }
@@ -106,6 +97,7 @@ function setupWebSocket() {
       }
     }
     if (data.type === 'peer-left') {
+      delete peers[data.name];
       closePeer(data.name);
     }
   };
@@ -130,16 +122,13 @@ async function setupLocalStream() {
   }
 }
 
-// 4. Connessione a un altro peer
 async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
   console.log(`[PEER] connectToPeer: peerName=${peerName}, isOfferer=${isOfferer}, myName=${myName}, roomId=${roomId}`);
   if (peerConnections[peerName]) {
     console.log(`[PEER] Già connesso a ${peerName}, ignoro`);
     return;
   }
-  if (peerConnections[peerName]) return; // già connesso
 
-  // Crea peerConnection
   const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
   peerConnections[peerName] = pc;
   remoteStreams[peerName] = null;
@@ -192,8 +181,6 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
   }
 }
 
-
-// 5. Chiusura peer (utente uscito)
 function closePeer(peerName) {
   if (peerConnections[peerName]) {
     peerConnections[peerName].close();
@@ -206,7 +193,6 @@ function closePeer(peerName) {
   if (v) v.remove();
 }
 
-// 6. Fine chiamata/chiusura
 if (endCallBtn) {
   endCallBtn.onclick = () => {
     ws.send(JSON.stringify({ type: 'leave' }));
@@ -218,7 +204,6 @@ if (endCallBtn) {
   };
 }
 
-// (Optional) Gestione chiusura forzata
 ipcRenderer.on('force-end-call', () => {
   ws.send(JSON.stringify({ type: 'leave' }));
   ws.close();
