@@ -65,13 +65,17 @@ ipcRenderer.on('call-data', async (event, data) => {
 });
 // 2. Setup media
 async function setupLocalStream() {
-  console.log(`[MEDIA] localStream ottenuto:`, localStream);
-  if (localStream) return;
+  if (localStream) {
+    console.log("[MEDIA] localStream già esistente:", localStream);
+    return;
+  }
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localVideo.srcObject = localStream;
+    console.log(`[MEDIA] localStream ottenuto OK:`, localStream);
   } catch (err) {
-    alert("Errore accesso webcam/microfono");
+    console.error("Errore accesso webcam/microfono", err);
+    alert("Errore accesso webcam/microfono: " + err.message);
     throw err;
   }
 }
