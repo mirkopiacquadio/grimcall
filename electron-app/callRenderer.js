@@ -59,26 +59,25 @@ function setupWebSocket() {
 
   ws.onmessage = async (e) => {
     let data;
-    if (typeof event.data === "string") {
+    if (typeof e.data === "string") {
       try {
-        data = JSON.parse(event.data);
+        data = JSON.parse(e.data);
       } catch (err) {
-        console.error("[WS] JSON error (string):", err, event.data);
+        console.error("[WS] JSON error (string):", err, e.data);
         return;
       }
-    } else if (event.data instanceof Blob) {
+    } else if (e.data instanceof Blob) {
       try {
-        const text = await event.data.text();
+        const text = await e.data.text();
         data = JSON.parse(text);
       } catch (err) {
-        console.error("[WS] JSON error (blob):", err, event.data);
+        console.error("[WS] JSON error (blob):", err, e.data);
         return;
       }
     } else {
-      console.error("[WS] Messaggio non gestito:", event.data);
+      console.error("[WS] Messaggio non gestito:", e.data);
       return;
     }
-
 
     // --- Mesh: chi entra riceve peers, chi è già in stanza riceve new-peer ---
     if (data.type === 'peer-list') {
