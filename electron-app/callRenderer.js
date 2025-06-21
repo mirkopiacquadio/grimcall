@@ -54,29 +54,64 @@ function makeRemoteVideosContainer() {
   return d;
 }
 
-// 1. Ingresso dati chiamata
+// 1. Ingresso dati chiamata (il resto del file resta UGUALE)
 ipcRenderer.on('call-data', async (event, data) => {
   myName = data.self;
   roomId = data.roomId || 'room-default';
   await setupLocalStream();
-  setupWebSocket(); // Non serve await qui!
+  setupWebSocket();
 });
 
-// 2. Setup media
-async function setupLocalStream() {
-  if (localStream) {
-    console.log("[MEDIA] localStream già esistente:", localStream);
-    return;
-  }
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localVideo.srcObject = localStream;
-    console.log(`[MEDIA] localStream ottenuto OK:`, localStream);
-  } catch (err) {
-    console.error("Errore accesso webcam/microfono", err);
-    alert("Errore accesso webcam/microfono: " + err.message);
-    throw err;
-  }
+// 2. Signaling WebSocket – versione robusta!
+function setupWebSocket() {
+  ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
+  
+  ws.onopen = () => {
+    console.log('[WS] OPEN! Faccio JOIN');
+    ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
+  };
+
+  ws.onmessage = async (e) => {
+    // LOG RAW: così vediamo sempre TUTTO!
+    console.log('[WS] RAW onmessage:', e.data);
+    let data;
+    try { data = JSON.parse(e.data); }
+    catch (err) { console.error('[WS] JSON PARSE ERROR', err, e.data); return; }
+
+    console.log('[SIGNAL] onmessage', data);
+
+    if (data.type === 'peer-list') {
+      for (const peer of data.peers) {
+        await connectToPeer(peer, true);
+        console.log(`[SIGNAL] Faccio OFFER a ${peer} (peer-list)`);
+      }
+    }
+    if (data.type === 'new-peer') {
+      console.log(`[SIGNAL] È entrato ${data.name}, attendo la sua OFFER`);
+    }
+    if (data.type === 'offer') {
+      console.log(`[SIGNAL] Ricevuta OFFER da ${data.from}`);
+      await connectToPeer(data.from, false, data.offer);
+    }
+    if (data.type === 'answer') {
+      console.log(`[SIGNAL] Ricevuta ANSWER da ${data.from}`);
+      await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
+    }
+    if (data.type === 'ice') {
+      if (!peerConnections[data.from]) {
+        if (!iceQueue[data.from]) iceQueue[data.from] = [];
+        iceQueue[data.from].push(data.candidate);
+      } else {
+        await peerConnections[data.from].addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    }
+    if (data.type === 'peer-left') {
+      closePeer(data.name);
+    }
+  };
+
+  ws.onclose = () => { console.log('[WS] closed'); };
+  ws.onerror = (err) => { console.error('[WS] error', err); };
 }
 
 // 3. Signaling WebSocket
