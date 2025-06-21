@@ -85,9 +85,8 @@ function setupWebSocket() {
       return;
     }
     log('MSG', data);
-    console.log('MSG', JSON.stringify(data, null, 2));
 
-    // === HANDLE SIGNALING ===
+    // === SIGNALING ===
     if (data.type === 'peer-list') {
       for (const peer of data.peers) {
         if (peer !== myName && !peerConnections[peer]) {
@@ -99,11 +98,16 @@ function setupWebSocket() {
     if (data.type === 'new-peer') {
       if (data.name !== myName && !peerConnections[data.name]) {
         log('Connecting to peer (new-peer)', data.name);
-        await connectToPeer(data.name, false); // ANSWER solo se non già connesso!
+        await connectToPeer(data.name, false);
       }
     }
     if (data.type === 'offer') {
       log('Received offer from', data.from);
+      // Chiudi eventuale connessione pre-esistente:
+      if (peerConnections[data.from]) {
+        log('[SAFEGUARD] Esisteva già una connessione con', data.from, '-> la chiudo');
+        closePeer(data.from);
+      }
       await connectToPeer(data.from, false, data.offer);
     }
     if (data.type === 'answer') {
@@ -117,20 +121,18 @@ function setupWebSocket() {
     if (data.type === 'ice') {
       const pc = peerConnections[data.from];
       if (!pc || !pc.remoteDescription || !pc.remoteDescription.type) {
-        // Peer connection non ancora pronta: metti in coda
         if (!iceQueue[data.from]) iceQueue[data.from] = [];
         iceQueue[data.from].push(data.candidate);
-        console.log("[CALL] ICE candidate QUEUED for", data.from);
+        log("[CALL] ICE candidate QUEUED for", data.from, data.candidate);
       } else {
         try {
           await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-          console.log("[CALL] ICE candidate ADDED for", data.from);
+          log("[CALL] ICE candidate ADDED for", data.from);
         } catch (err) {
-          console.warn("[CALL] ICE candidate FAILED for", data.from, err);
+          log("[CALL] ICE candidate FAILED for", data.from, err);
         }
       }
     }
-
     if (data.type === 'incoming-call' && data.invite) {
       log('Sei stato invitato a una chiamata!', data);
       // TODO: UI per accetta/rifiuta
@@ -147,7 +149,22 @@ function setupWebSocket() {
 
 // Mesh: ogni nuovo peer = nuova connessione P2P
 async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
-  if (peerConnections[peerName]) return;
+  if (peerConnections[peerName]) {
+    log("[SAFEGUARD] peerConnections già esistente per", peerName, "(non ricreo)");
+    return;
+  }
+  log("[DEBUG] connectToPeer", { peerName, isOfferer, remoteOffer: !!remoteOffer });
+
+  // Assicurati localStream PRIMA di tutto
+  await setupLocalStream();
+
+  if (!localStream || localStream.getTracks().length === 0) {
+    log("[ERROR] localStream non pronto o senza tracce!");
+    alert("LocalStream non pronto: niente media inviabile.");
+    return;
+  }
+  log("[CHECK] localStream tracks:", localStream.getTracks().map(t => t.kind));
+
   const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
   peerConnections[peerName] = pc;
   remoteStreams[peerName] = null;
@@ -156,14 +173,21 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
   pc.onicecandidate = event => {
     if (event.candidate) {
       ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: peerName }));
+      log('[ICE] Invio ICE candidate verso', peerName, event.candidate);
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    log('[STATE] Connessione verso', peerName, '->', pc.connectionState);
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+      closePeer(peerName);
     }
   };
 
   pc.ontrack = event => {
-    console.log("[CALL] ontrack event received", event);
-    let stream = event.streams[0];
-    if (!remoteStreams[peerName]) {
-      remoteStreams[peerName] = stream;
+    log("[TRACK] ontrack event received", event);
+    if (event.streams && event.streams[0]) {
+      remoteStreams[peerName] = event.streams[0];
       let v = document.getElementById('video_' + peerName);
       if (!v) {
         v = document.createElement('video');
@@ -173,41 +197,45 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
         v.className = 'remote-video';
         remoteVideos.appendChild(v);
       }
-      v.srcObject = stream;
-      v.play().catch(e => console.error("Video play error", e));
-      console.log("[CALL] Set remote video for", peerName);
+      v.srcObject = event.streams[0];
+      v.play().catch(e => log("Video play error", e));
+      log("[TRACK] Set remote video for", peerName, event.streams[0].id);
     }
   };
 
-  // *** IMPORTANTISSIMO ***
-  await setupLocalStream(); // <- Prima di qualsiasi SDP!
-
-  // *** AGGIUNGI SEMPRE I TUOI TRACK PRIMA DI OFFER/ANSWER ***
-  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-  console.log("[CALL] localStream track added", localStream.getTracks());
+  // AGGIUNGI SEMPRE I TUOI TRACK PRIMA DI OFFER/ANSWER!
+  localStream.getTracks().forEach(track => {
+    pc.addTrack(track, localStream);
+    log('[ADDTRACK] Aggiunta traccia', track.kind, 'a', peerName);
+  });
 
   if (isOfferer) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     ws.send(JSON.stringify({ type: 'offer', offer, to: peerName }));
-    console.log("[CALL] Sent offer to", peerName, offer);
+    log("[OFFER] Sent offer to", peerName, offer);
   } else if (remoteOffer) {
+    log("[ANSWER] Imposto remote offer per", peerName);
     await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     ws.send(JSON.stringify({ type: 'answer', answer, to: peerName }));
-    console.log("[CALL] Received offer, sent answer to", peerName, answer);
+    log("[ANSWER] Received offer, sent answer to", peerName, answer);
   }
 
-  // ICE candidate dopo che remoteDescription è settata
+  // Applica ICE candidate in coda (solo se ora abbiamo remoteDescription)
   if (iceQueue[peerName].length) {
     for (const candidate of iceQueue[peerName]) {
-      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        log("[ICE] Added queued candidate per", peerName, candidate);
+      } catch (err) {
+        log("[ICE] FAILED to add queued candidate", candidate, err);
+      }
     }
     iceQueue[peerName] = [];
   }
 }
-
 
 function closePeer(peerName) {
   log('Chiudo peer', peerName);
