@@ -87,13 +87,17 @@ function setupWebSocket() {
     // === HANDLE SIGNALING ===
     if (data.type === 'peer-list') {
       for (const peer of data.peers) {
-        log('Connecting to peer (peer-list)', peer);
-        await connectToPeer(peer, true);
+        if (peer !== myName && !peerConnections[peer]) {
+          log('Connecting to peer (peer-list)', peer);
+          await connectToPeer(peer, true); // OFFER
+        }
       }
     }
     if (data.type === 'new-peer') {
-      log('Connecting to peer (new-peer)', data.name);
-      await connectToPeer(data.name, false);
+      if (data.name !== myName && !peerConnections[data.name]) {
+        log('Connecting to peer (new-peer)', data.name);
+        await connectToPeer(data.name, false); // ANSWER solo se non già connesso!
+      }
     }
     if (data.type === 'offer') {
       log('Received offer from', data.from);
