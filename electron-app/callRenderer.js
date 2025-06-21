@@ -13,7 +13,6 @@ const remoteVideos = document.getElementById('remoteVideos') || makeRemoteVideos
 const callStatus = document.getElementById('callStatus');
 const endCallBtn = document.getElementById('endCallBtn');
 
-// Utility per creare dinamicamente il container se non esiste
 function makeRemoteVideosContainer() {
   const d = document.createElement('div');
   d.id = 'remoteVideos';
@@ -25,70 +24,46 @@ function makeRemoteVideosContainer() {
   return d;
 }
 
-// 1. Ingresso dati chiamata (differenzia guest e operatore!)
 ipcRenderer.on('call-data', async (event, data) => {
   myName = data.self;
-  roomId = data.roomId || 'room-default';
+  roomId = data.roomId;
   await setupLocalStream();
-  setupWebSocket(data.isOperator); // <-- pass ruolo
+  setupWebSocket();
 });
 
 async function setupLocalStream() {
-  if (localStream) {
-    console.log("[MEDIA] localStream già esistente:", localStream);
-    return;
-  }
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localVideo.srcObject = localStream;
-    console.log(`[MEDIA] localStream ottenuto OK:`, localStream);
-  } catch (err) {
-    console.error("Errore accesso webcam/microfono", err);
-    alert("Errore accesso webcam/microfono: " + err.message);
-    throw err;
-  }
+  if (localStream) return;
+  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  localVideo.srcObject = localStream;
 }
 
-// 2. WebSocket: il JOIN SOLO se sei Guest, se operatore aspetta incoming-call!
-function setupWebSocket(isOperator) {
+function setupWebSocket() {
   ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
-
   ws.onopen = () => {
-    console.log('[WS] OPEN!');
-    if (!isOperator) {
-      // Se guest chiama, entra subito
-      ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
-    }
+    ws.send(JSON.stringify({ type: 'login', name: myName }));
+    // Per compatibilità: la stanza (roomId) deve arrivare!
+    ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
   };
 
-  ws.onmessage = async (e) => {
+  ws.onmessage = async (msg) => {
     let data;
-    try { data = JSON.parse(e.data); }
-    catch (err) { console.error('[WS] JSON PARSE ERROR', err, e.data); return; }
-
-    // Operatore: ricevi incoming-call => fai join!
-    if (data.type === 'incoming-call' && isOperator) {
+    try { data = JSON.parse(msg.data); } catch (err) { return; }
+    if (data.type === 'incoming-call' && data.room) {
       roomId = data.room;
       ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
-      return;
     }
-
-    // Signaling
     if (data.type === 'peer-list') {
       for (const peer of data.peers) {
-        await connectToPeer(peer, true);
-        console.log(`[SIGNAL] Faccio OFFER a ${peer} (peer-list)`);
+        await connectToPeer(peer, true); // mesh: offerta verso chi c’è già
       }
     }
     if (data.type === 'new-peer') {
-      console.log(`[SIGNAL] È entrato ${data.name}, attendo la sua OFFER`);
+      // È entrato qualcun altro dopo: attendi la sua offer (lui fa offer a te)
     }
     if (data.type === 'offer') {
-      console.log(`[SIGNAL] Ricevuta OFFER da ${data.from}`);
       await connectToPeer(data.from, false, data.offer);
     }
     if (data.type === 'answer') {
-      console.log(`[SIGNAL] Ricevuta ANSWER da ${data.from}`);
       await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
     }
     if (data.type === 'ice') {
@@ -104,11 +79,9 @@ function setupWebSocket(isOperator) {
     }
   };
 
-  ws.onclose = () => { console.log('[WS] closed'); };
+  ws.onclose = () => { };
   ws.onerror = (err) => { console.error('[WS] error', err); };
 }
-
-// --- Rimane tutto come nel tuo file per connectToPeer, closePeer etc...
 
 async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
   if (peerConnections[peerName]) return;
@@ -119,7 +92,7 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
 
   pc.onicecandidate = event => {
     if (event.candidate) {
-      ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: peerName }));
+      ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate, to: peerName, from: myName }));
     }
   };
 
@@ -140,18 +113,17 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
     }
   };
 
-  await setupLocalStream();
   localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
   if (isOfferer) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    ws.send(JSON.stringify({ type: 'offer', offer, to: peerName }));
+    ws.send(JSON.stringify({ type: 'offer', offer, to: peerName, from: myName }));
   } else if (remoteOffer) {
     await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    ws.send(JSON.stringify({ type: 'answer', answer, to: peerName }));
+    ws.send(JSON.stringify({ type: 'answer', answer, to: peerName, from: myName }));
   }
 
   if (iceQueue[peerName].length) {
@@ -174,7 +146,6 @@ function closePeer(peerName) {
   if (v) v.remove();
 }
 
-// EndCall...
 if (endCallBtn) {
   endCallBtn.onclick = () => {
     ws.send(JSON.stringify({ type: 'leave' }));

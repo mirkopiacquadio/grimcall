@@ -1,20 +1,23 @@
 const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 3000 });
 
-let users = [];
-let rooms = {}; // { [roomId]: [userName, ...] }
-let queue = [];
+let users = [];              // [{ name, socket, roomId, inCall }]
+let rooms = {};              // { roomId: [userName, ...] }
 
-console.log("🚀 [SERVER] WebSocket server started on port 3000");
+console.log("🚀 [SERVER] Mesh WebRTC server avviato");
 
-function getUserBySocket(ws) { return users.find(u => u.socket === ws); }
-function getUserByName(name) { return users.find(u => u.name === name); }
+function getUserBySocket(ws) {
+  return users.find(u => u.socket === ws);
+}
+function getUserByName(name) {
+  return users.find(u => u.name === name);
+}
 function broadcastUserList() {
   const payload = {
     type: 'userlist',
     users: users.map(u => ({
       name: u.name,
-      available: u.available,
+      available: !u.inCall,
     })),
   };
   users.forEach(u => {
@@ -22,8 +25,8 @@ function broadcastUserList() {
       u.socket.send(JSON.stringify(payload));
     }
   });
-  console.log("📡 [BROADCAST] User list sent:", payload.users);
 }
+
 function addToRoom(roomId, userName) {
   if (!rooms[roomId]) rooms[roomId] = [];
   if (!rooms[roomId].includes(userName)) rooms[roomId].push(userName);
@@ -37,67 +40,59 @@ function getRoomPeers(roomId, exclude) {
   return (rooms[roomId] || []).filter(u => u !== exclude);
 }
 
-// Evento nuova connessione
 wss.on('connection', ws => {
   console.log("🟢 [CONNECT] New client connected");
 
   ws.on('message', msg => {
     try {
       const data = JSON.parse(msg);
-      console.log("📨 [RECV]", data);
-
-      // LOGIN
+      // LOGIN: name
       if (data.type === 'login') {
         let existingUser = getUserByName(data.name);
         if (existingUser) {
           existingUser.socket = ws;
-          existingUser.available = true;
           existingUser.inCall = false;
         } else {
           users.push({
             name: data.name,
             socket: ws,
-            available: true,
             inCall: false,
+            roomId: null,
           });
         }
-        console.log(`✅ [LOGIN] ${data.name} logged in`);
         broadcastUserList();
         return;
       }
 
-      // CALL (l'utente Guest vuole chiamare un operatore)
+      // CALL (guest chiede di avviare una room)
       if (data.type === 'call') {
         const caller = getUserBySocket(ws);
         const callee = getUserByName(data.target);
         if (!caller || !callee) return;
-        // Genera roomId
+        // Crea roomId (sempre guest+callee)
         const roomId = [caller.name, callee.name].sort().join('_');
+        // Notifica all’operatore: chiamata in arrivo
         callee.socket.send(JSON.stringify({ type: 'incoming-call', from: caller.name, room: roomId }));
         caller.roomId = roomId;
-        console.log(`📞 [CALL] ${caller.name} is calling ${callee.name} (room: ${roomId})`);
-        broadcastUserList();
+        callee.roomId = roomId;
         return;
       }
 
-      // JOIN (partecipante entra in room)
+      // JOIN room (chiunque entra in room, mesh mode!)
       if (data.type === 'join') {
         const user = getUserByName(data.name);
         if (!user) return;
-
         addToRoom(data.room, user.name);
         user.inCall = true;
-        user.available = false;
         user.roomId = data.room;
-        console.log(`[ROOM] Dopo join: ${data.room} =`, rooms[data.room]);
 
-        // Invio la lista peer agli altri nella stanza
+        // Invio peer-list SOLO ai nuovi entrati
         const peers = getRoomPeers(data.room, user.name);
         if (user.socket && user.socket.readyState === WebSocket.OPEN) {
           user.socket.send(JSON.stringify({ type: 'peer-list', peers }));
         }
-        console.log(`[SIGNAL] Inviata peer-list a ${user.name} -> peers:`, peers);
-        // Avviso chi è già in stanza che è entrato un nuovo peer
+
+        // Avviso tutti gli altri nella room del nuovo peer (così fanno l’offer verso di lui)
         peers.forEach(peerName => {
           const peer = getUserByName(peerName);
           if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
@@ -109,26 +104,43 @@ wss.on('connection', ws => {
         return;
       }
 
-      // OFFER/ANSWER/ICE (relay verso il target)
+      // INVITE: aggiungi un altro utente in room
+      if (data.type === 'invite') {
+        const inviter = getUserBySocket(ws);
+        const invited = getUserByName(data.to);
+        if (!inviter || !invited) return;
+        const roomId = data.room;
+        addToRoom(roomId, invited.name);
+        invited.roomId = roomId;
+        invited.inCall = true;
+        invited.socket.send(JSON.stringify({
+          type: 'incoming-call',
+          from: inviter.name,
+          room: roomId,
+          invite: true
+        }));
+        broadcastUserList();
+        return;
+      }
+
+      // OFFER/ANSWER/ICE: relay signaling verso target
       if (["offer", "answer", "ice"].includes(data.type)) {
         const peer = getUserByName(data.to);
         if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
-          peer.socket.send(msg); // relay diretto!
-          console.log(`🔀 [RELAY] ${data.type} relayed from ${getUserBySocket(ws)?.name} to ${peer.name}`);
+          peer.socket.send(msg);
         }
         return;
       }
 
-      // END/BYE (utente lascia la chiamata)
+      // END (utente lascia la room)
       if (data.type === 'leave' || data.type === 'end' || data.type === 'bye') {
         const user = getUserBySocket(ws);
         if (user && user.roomId) {
           const roomId = user.roomId;
           removeFromRoom(roomId, user.name);
           user.inCall = false;
-          user.available = true;
-          delete user.roomId;
-          console.log(`🔚 [END] ${user.name} left room ${roomId}`);
+          user.roomId = null;
+          // Avvisa tutti nella stanza che è uscito
           getRoomPeers(roomId).forEach(userName => {
             const peer = getUserByName(userName);
             if (peer && peer.socket && peer.socket.readyState === WebSocket.OPEN) {
@@ -152,8 +164,9 @@ wss.on('connection', ws => {
   ws.on('close', () => {
     const disconnectedUser = getUserBySocket(ws);
     if (disconnectedUser) {
-      Object.keys(rooms).forEach(roomId => removeFromRoom(roomId, disconnectedUser.name));
-      console.log(`🔴 [DISCONNECT] ${disconnectedUser.name} disconnected`);
+      if (disconnectedUser.roomId) {
+        removeFromRoom(disconnectedUser.roomId, disconnectedUser.name);
+      }
       users = users.filter(u => u.socket !== ws);
       broadcastUserList();
     }
