@@ -49,7 +49,9 @@ function makeRemoteVideosContainer() {
 }
 
 async function setupLocalStream() {
+  console.log('TEST')
   if (localStream) return;
+  console.log(localStream)
   try {
     log('Chiedo accesso a webcam/mic...');
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
