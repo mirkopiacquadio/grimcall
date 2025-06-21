@@ -18,9 +18,12 @@ const endCallBtn = document.getElementById('endCallBtn');
 
 function log(...args) {
   console.log('[CALL]', ...args);
-  if (callStatus) callStatus.innerText = args.map(String).join(' ');
+  if (callStatus) {
+    callStatus.innerText = args.map(a =>
+      typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+    ).join(' ');
+  }
 }
-
 // Chiamata mesh: sempre a 2 di default, AUMENTA SOLO quando fai INVITE
 ipcRenderer.on('call-data', async (event, data) => {
   log('Received call-data', data);
