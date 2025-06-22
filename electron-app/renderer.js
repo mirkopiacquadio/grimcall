@@ -14,6 +14,8 @@ let inactivityTimeout;
 const screensaver = document.getElementById("screensaver");
 let isInCall = false;
 let currentRoomId = null;
+let incomingCallAudioLoopTimer = null;
+let incomingCallAudioLoopStart = 0;
 const incomingCallAudio = document.getElementById('incomingCallAudio');
 
 ipcRenderer.on('call-ended', () => {
@@ -108,6 +110,7 @@ function connectWebSocket() {
     }
 
     if (data.type === 'incoming-call' && isOperator) {
+      playIncomingCallAudioLoop();
       console.log('Ricevuta chiamata in arrivo:', data);
       document.getElementById('incomingCallPopup').style.display = 'flex';
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
@@ -215,5 +218,37 @@ function stopIncomingCallAudio() {
   if (incomingCallAudio) {
     incomingCallAudio.pause();
     incomingCallAudio.currentTime = 0;
+    incomingCallAudio.onended = null;
   }
+  if (incomingCallAudioLoopTimer) {
+    clearTimeout(incomingCallAudioLoopTimer);
+    incomingCallAudioLoopTimer = null;
+  }
+}
+
+function playIncomingCallAudioLoop() {
+  if (!incomingCallAudio) return;
+  stopIncomingCallAudio(); // ferma ogni loop precedente
+
+  incomingCallAudioLoopStart = Date.now();
+  // Handler alla fine dell’audio
+  incomingCallAudio.onended = function () {
+    if (!incomingCallAudioLoopTimer) return; // già stoppato
+    // Se sono passati meno di 60s riparti, altrimenti stop
+    if (Date.now() - incomingCallAudioLoopStart < 60000) {
+      incomingCallAudio.currentTime = 0;
+      incomingCallAudio.play().catch(() => { });
+    } else {
+      stopIncomingCallAudio();
+    }
+  };
+
+  // Prima riproduzione
+  incomingCallAudio.currentTime = 0;
+  incomingCallAudio.play().catch(() => { });
+
+  // Timer di emergenza, dopo 60s stop
+  incomingCallAudioLoopTimer = setTimeout(() => {
+    stopIncomingCallAudio();
+  }, 60000);
 }

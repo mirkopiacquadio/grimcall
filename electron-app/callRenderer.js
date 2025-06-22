@@ -17,7 +17,6 @@ const localVideo = document.getElementById('localVideo');
 const remoteVideos = document.getElementById('remoteVideos') || makeRemoteVideosContainer();
 const callStatus = document.getElementById('callStatus');
 const endCallBtn = document.getElementById('endCallBtn');
-const incomingCallAudio = document.getElementById('incomingCallAudio');
 
 function log(...args) {
   console.log('[CALL]', ...args);
@@ -173,10 +172,6 @@ function setupWebSocket() {
     if (data.type === 'incoming-call' && data.invite) {
       if (data.type === 'incoming-call' && data.invite) {
         log('Sei stato invitato a una chiamata!', data);
-        if (incomingCallAudio) {
-          incomingCallAudio.currentTime = 0; // Riavvia da inizio
-          incomingCallAudio.play().catch(e => log('Audio play error', e));
-        }
       }
     }
     if (data.type === 'participant-left') {
