@@ -18,14 +18,14 @@ const remoteVideos = document.getElementById('remoteVideos') || makeRemoteVideos
 const callStatus = document.getElementById('callStatus');
 const endCallBtn = document.getElementById('endCallBtn');
 
-function log(...args) {
-  console.log('[CALL]', ...args);
-  if (callStatus) {
-    callStatus.innerText = args.map(a =>
-      typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-    ).join(' ');
-  }
-}
+// function log(...args) {
+//   console.log('[CALL]', ...args);
+//   if (callStatus) {
+//     callStatus.innerText = args.map(a =>
+//       typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+//     ).join(' ');
+//   }
+// }
 
 function updateConnectedPeers() {
   connectedPeers = new Set(Object.keys(peerConnections));
@@ -83,9 +83,7 @@ function makeRemoteVideosContainer() {
 }
 
 async function setupLocalStream() {
-  console.log('TEST')
   if (localStream) return;
-  console.log(localStream)
   try {
     log('Chiedo accesso a webcam/mic...');
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -118,7 +116,11 @@ function setupWebSocket() {
     log('MSG', data);
 
     if (data.type === 'userlist') handleUserList(data);
-
+    if (callStatus) {
+      callStatus.style.display = '';
+      callStatus.innerText = "Sto chiamando l'operatore...";
+    }
+    
     // === SIGNALING ===
     if (data.type === 'peer-list') {
       // data.peers = array di nomi (escluso te stesso!)
@@ -129,6 +131,7 @@ function setupWebSocket() {
           await connectToPeer(peer, true);
         }
       }
+      if (callStatus) callStatus.style.display = 'none';
     }
     if (data.type === 'new-peer') {
       if (data.name !== myName && !peerConnections[data.name]) {
@@ -181,7 +184,7 @@ function setupWebSocket() {
     }
 
     if (data.type === 'call-rejected') {
-       alert(`${data.from} ha rifiutato la chiamata`);
+      alert(`${data.from} ha rifiutato la chiamata`);
       ws.send(JSON.stringify({ type: 'leave' }));
       ws.close();
       Object.keys(peerConnections).forEach(closePeer);
