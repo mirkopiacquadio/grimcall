@@ -135,7 +135,7 @@ function connectWebSocket() {
 
     if (data.type === 'call-rejected') {
       alert(`${data.from} ha rifiutato la chiamata`);
-      stopIncomingCallAudio();
+      ipcRenderer.send('force-end-call');
     }
 
     if (data.type === 'call-accepted') {

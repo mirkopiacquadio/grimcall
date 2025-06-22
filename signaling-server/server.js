@@ -162,6 +162,16 @@ wss.on('connection', ws => {
         return;
       }
 
+      // --- REJECT CALL ---
+      if (data.type === 'reject') {
+        // "from" è il chiamante guest (nome)
+        const guest = getUserByName(data.from);
+        if (guest?.socket?.readyState === WebSocket.OPEN) {
+          guest.socket.send(JSON.stringify({ type: 'call-rejected', from: getUserBySocket(ws)?.name }));
+        }
+        return;
+      }
+
     } catch (err) {
       console.error("❗ [ERROR] Failed to parse message:", msg, err);
     }
