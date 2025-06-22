@@ -221,10 +221,9 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
     log("[TRACK] ontrack event received", event);
     if (event.streams && event.streams[0]) {
       remoteStreams[peerName] = event.streams[0];
-      // PRIMA soluzione: se esiste remoteVideo usalo, ALTRIMENTI crea dinamico
-      let v = document.getElementById('remoteVideo') ||
-        document.getElementById('video_' + peerName);
 
+      // Cerca video già esistente o creane uno
+      let v = document.getElementById('video_' + peerName);
       if (!v) {
         v = document.createElement('video');
         v.id = 'video_' + peerName;
@@ -235,9 +234,13 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
       }
       v.srcObject = event.streams[0];
       v.play().catch(e => log("Video play error", e));
+
+      // AGGIUNGI QUESTO:
+      updateRemoteVideosLayout();
       log("[TRACK] Set remote video for", peerName, event.streams[0].id);
     }
   };
+
 
   // AGGIUNGI SEMPRE I TUOI TRACK PRIMA DI OFFER/ANSWER!
   localStream.getTracks().forEach(track => {
@@ -284,6 +287,8 @@ function closePeer(peerName) {
   }
   let v = document.getElementById('video_' + peerName);
   if (v) v.remove();
+  // Aggiorna layout dopo rimozione
+  updateRemoteVideosLayout();
 }
 
 if (endCallBtn) {
@@ -307,3 +312,20 @@ ipcRenderer.on('force-end-call', () => {
   ipcRenderer.send('call-ended');
   ipcRenderer.send('close-call-window');
 });
+
+function updateRemoteVideosLayout() {
+  const remoteVideosArr = Array.from(remoteVideos.querySelectorAll('video.remote-video'));
+  remoteVideosArr.forEach(v => {
+    v.classList.remove('half');
+    v.style.height = '';
+  });
+
+  if (remoteVideosArr.length === 2) {
+    remoteVideosArr.forEach(v => v.classList.add('half'));
+  } else if (remoteVideosArr.length === 1) {
+    remoteVideosArr[0].classList.remove('half');
+    remoteVideosArr[0].style.height = '100vh';
+  } else if (remoteVideosArr.length >= 3) {
+    remoteVideosArr.forEach(v => v.style.height = (100 / remoteVideosArr.length) + 'vh');
+  }
+}
