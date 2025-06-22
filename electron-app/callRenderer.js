@@ -27,6 +27,9 @@ function log(...args) {
 // Chiamata mesh: sempre a 2 di default, AUMENTA SOLO quando fai INVITE
 ipcRenderer.on('call-data', async (event, data) => {
   log('Received call-data', data);
+  if (!data.isOperator) {
+    document.getElementById('addParticipantBtn').style.display = 'none';
+  }
   myName = data.self;
   roomId = data.roomId || 'room-default';
   await setupLocalStream();

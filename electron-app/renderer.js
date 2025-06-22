@@ -112,11 +112,8 @@ function connectWebSocket() {
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
 
       document.getElementById('acceptCallBtn').onclick = () => {
-        if (!isOperator) {
-          document.getElementById('addParticipantBtn').style.display = 'none';
-        }
         // 1. Apre la callWindow, anche qui serve passare la roomId
-        ipcRenderer.send('open-call-window', { from: data.from, self: myName, roomId: data.room });
+        ipcRenderer.send('open-call-window', { from: data.from, self: myName, roomId: data.room, isOperator: isOperator });
 
         // 2. Manda il join!
         ws.send(JSON.stringify({ type: 'join', name: myName, room: data.room }));
@@ -186,7 +183,7 @@ function renderOperators(usersOnline) {
         currentRoomId = generateRoomIdFromNames(myName, op);
         ws.send(JSON.stringify({ type: 'call', target: op }));
         // 2. Subito dopo, apri la finestra di chiamata e fai join nella room
-        ipcRenderer.send('open-call-window', { self: myName, roomId: currentRoomId });
+        ipcRenderer.send('open-call-window', { self: myName, roomId: currentRoomId, isOperator: false });
         isInCall = true;
       };
       card.appendChild(btn);
