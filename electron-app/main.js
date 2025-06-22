@@ -18,7 +18,7 @@ function createMainWindow() {
     }
   });
 
-  //mainWindow.webContents.openDevTools();  // Facoltativo per debug
+  mainWindow.webContents.openDevTools();  // Facoltativo per debug
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
@@ -54,7 +54,7 @@ app.whenReady().then(() => {
     callWindow.loadFile(path.join(__dirname, 'callWindow.html'));
     callWindow.webContents.once('did-finish-load', () => {
       callWindow.webContents.send('call-data', callData);
-      // callWindow.webContents.openDevTools();
+       callWindow.webContents.openDevTools();
     });
 
     callWindow.on('closed', () => {
