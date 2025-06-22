@@ -9,7 +9,7 @@ function createMainWindow() {
     frame: false,         // Nessuna barra superiore
     kiosk: true,          // Modalità kiosk vera
     fullscreen: true,     // (opzionale, per massima compatibilità)
-    alwaysOnTop: true,    // Non va mai dietro altre app
+    //alwaysOnTop: true,    // Non va mai dietro altre app
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,           // ✅ necessario per contextBridge
@@ -31,15 +31,14 @@ app.whenReady().then(() => {
   globalShortcut.register('CommandOrControl+Shift+Esc', () => { /* NOP */ });
   globalShortcut.register('F11', () => { /* NOP */ });
 
-  ipcMain.on('call-data', (event, data) => {
-    //createCallWindow(data);
-  });
-
   ipcMain.on('open-call-window', (event, callData) => {
     if (callWindow) {
       callWindow.focus();
       return;
     }
+
+    // 1. NASCONDI la mainWindow PRIMA di mostrare la callWindow
+    if (mainWindow) mainWindow.hide();
 
     callWindow = new BrowserWindow({
       fullscreen: true,
@@ -63,9 +62,14 @@ app.whenReady().then(() => {
 
     callWindow.on('closed', () => {
       callWindow = null;
+      // 2. RIMOSTRA la mainWindow e rimetti in kiosk
       if (mainWindow) {
-        mainWindow.webContents.send('call-ended');
+        mainWindow.show();
+        mainWindow.setKiosk(true);
+        mainWindow.focus();
+        mainWindow.setFullScreen(true); // opzionale, aiuta su Windows
       }
+      mainWindow?.webContents.send('call-ended');
     });
   });
 
