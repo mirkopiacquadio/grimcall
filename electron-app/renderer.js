@@ -138,6 +138,11 @@ function connectWebSocket() {
       ipcRenderer.send('force-end-call');
     }
 
+    if (data.type === 'login-error') {
+      alert(data.reason || 'Login fallito');
+      document.getElementById('logoutBtn').onclick = logout;
+    }
+
     if (data.type === 'call-accepted') {
       // Non serve più: usiamo solo roomId/join per mesh
     }
