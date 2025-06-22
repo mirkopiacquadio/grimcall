@@ -6,7 +6,7 @@ let mainWindow, callWindow;
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     fullscreen: false,
-    frame: false,         // Nessuna barra superiore
+    frame: true,         // Nessuna barra superiore
     kiosk: false,          // Modalità kiosk vera
     fullscreen: true,     // (opzionale, per massima compatibilità)
     //alwaysOnTop: true,    // Non va mai dietro altre app
@@ -39,7 +39,7 @@ app.whenReady().then(() => {
 
     callWindow = new BrowserWindow({
       fullscreen: true,
-      frame: false,         // Nessuna barra superiore
+      frame: true,         // Nessuna barra superiore
       kiosk: false,          // Modalità kiosk vera
       fullscreen: true,     // (opzionale, per massima compatibilità)
       alwaysOnTop: true,    // Non va mai dietro altre app
