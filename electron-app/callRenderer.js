@@ -121,17 +121,20 @@ function setupWebSocket() {
 
     // === SIGNALING ===
     if (data.type === 'peer-list') {
+      // data.peers = array di nomi (escluso te stesso!)
       for (const peer of data.peers) {
         if (peer !== myName && !peerConnections[peer]) {
+          // Il nuovo utente fa OFFER verso ogni altro peer
           log('Connecting to peer (peer-list)', peer);
-          await connectToPeer(peer, true); // OFFER
+          await connectToPeer(peer, true);
         }
       }
     }
     if (data.type === 'new-peer') {
       if (data.name !== myName && !peerConnections[data.name]) {
+        // Tutti già presenti fanno OFFER verso il nuovo peer
         log('Connecting to peer (new-peer)', data.name);
-        await connectToPeer(data.name, false);
+        await connectToPeer(data.name, true);
       }
     }
     if (data.type === 'offer') {
