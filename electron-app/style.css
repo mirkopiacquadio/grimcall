@@ -112,7 +112,7 @@ button:hover {
   justify-content: stretch;
   align-items: stretch;
   gap: 0;
-  z-index: 1;
+  z-index: 1; /* Video remoti dietro */
 }
 
 .remote-video {
@@ -139,6 +139,7 @@ button:hover {
   border: 2px solid white;
   border-radius: 8px;
   object-fit: cover;
+  z-index: 10; /* Sopra i video remoti! */
 }
 
 .end-call-btn {
@@ -246,4 +247,18 @@ button:hover {
   object-fit: cover;
   z-index: 9999;
   background: black;
+}
+
+
+.end-call-btn,
+.end-call-btn-1 {
+  z-index: 20; /* Sopra tutto! */
+}
+
+.call-status {
+  z-index: 30;
+}
+
+#participantsDropdown {
+  z-index: 1000;
 }
