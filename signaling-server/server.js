@@ -47,15 +47,7 @@ wss.on('connection', ws => {
       // --- LOGIN ---
       if (data.type === 'login') {
         let existing = getUserByName(data.name);
-        // BLOCCA doppio login: se esiste già connesso, invia errore e chiudi nuova connessione
-        if (existing && existing.socket && existing.socket.readyState === WebSocket.OPEN) {
-          console.log(`[LOGIN FAIL] Tentativo di doppio login: ${data.name}`);
-          ws.send(JSON.stringify({ type: 'login-error', reason: 'Utente già connesso' }));
-          ws.close();
-          return;
-        }
         if (existing) {
-          // (Vecchia sessione, ma non più attiva)
           existing.socket = ws;
           existing.available = true;
           existing.inCall = false;
