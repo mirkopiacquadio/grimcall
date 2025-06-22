@@ -4,11 +4,8 @@ let ws;
 let myName = '';
 let isOperator = false;
 let operatorList = [
-  'Mario Rossi',
-  'Laura Bianchi',
-  'Marco Neri',
-  'Giulia Verdi',
-  'Antonio Esposito'
+  'GRIM 1',
+  'GRIM 2'
 ];
 let inactivityTimeout;
 const screensaver = document.getElementById("screensaver");
