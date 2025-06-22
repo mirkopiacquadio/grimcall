@@ -13,7 +13,8 @@ let operatorList = [
 let inactivityTimeout;
 const screensaver = document.getElementById("screensaver");
 let isInCall = false;
-let currentRoomId = null; // NEW: traccia la stanza della chiamata
+let currentRoomId = null;
+const incomingCallAudio = document.getElementById('incomingCallAudio');
 
 ipcRenderer.on('call-ended', () => {
   isInCall = false;
@@ -112,6 +113,7 @@ function connectWebSocket() {
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
 
       document.getElementById('acceptCallBtn').onclick = () => {
+        stopIncomingCallAudio();
         // 1. Apre la callWindow, anche qui serve passare la roomId
         ipcRenderer.send('open-call-window', { from: data.from, self: myName, roomId: data.room, isOperator: isOperator });
 
@@ -122,13 +124,16 @@ function connectWebSocket() {
       };
 
       document.getElementById('rejectCallBtn').onclick = () => {
+        stopIncomingCallAudio();
         ws.send(JSON.stringify({ type: 'reject', from: data.from }));
         document.getElementById('incomingCallPopup').style.display = 'none';
+        alert(`${data.from} ha rifiutato la chiamata`);
       };
     }
 
     if (data.type === 'call-rejected') {
       alert(`${data.from} ha rifiutato la chiamata`);
+      stopIncomingCallAudio();
     }
 
     if (data.type === 'call-accepted') {
@@ -206,3 +211,10 @@ welcomeTitle.onclick = () => {
     console.log("🚪 Uscita dalla modalità kiosk richiesta!");
   }
 };
+
+function stopIncomingCallAudio() {
+  if (incomingCallAudio) {
+    incomingCallAudio.pause();
+    incomingCallAudio.currentTime = 0;
+  }
+}
