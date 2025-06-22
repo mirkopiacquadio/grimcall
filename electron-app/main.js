@@ -7,7 +7,7 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     fullscreen: false,
     frame: false,         // Nessuna barra superiore
-    kiosk: true,          // Modalità kiosk vera
+    kiosk: false,          // Modalità kiosk vera
     fullscreen: true,     // (opzionale, per massima compatibilità)
     //alwaysOnTop: true,    // Non va mai dietro altre app
     webPreferences: {
@@ -40,7 +40,7 @@ app.whenReady().then(() => {
     callWindow = new BrowserWindow({
       fullscreen: true,
       frame: false,         // Nessuna barra superiore
-      kiosk: true,          // Modalità kiosk vera
+      kiosk: false,          // Modalità kiosk vera
       fullscreen: true,     // (opzionale, per massima compatibilità)
       alwaysOnTop: true,    // Non va mai dietro altre app
       webPreferences: {
