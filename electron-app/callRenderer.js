@@ -181,13 +181,11 @@ function setupWebSocket() {
     }
 
     if (data.type === 'call-rejected') {
-      alert(`${data.from} ha rifiutato la chiamata`);
-      
       ws.send(JSON.stringify({ type: 'leave' }));
       ws.close();
       Object.keys(peerConnections).forEach(closePeer);
       if (localStream) localStream.getTracks().forEach(track => track.stop());
-      ipcRenderer.send('ccall-rejected');
+      ipcRenderer.send('call-rejected');
       ipcRenderer.send('call-ended');
       ipcRenderer.send('close-call-window');
     }
