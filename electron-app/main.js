@@ -37,9 +37,6 @@ app.whenReady().then(() => {
       return;
     }
 
-    // 1. NASCONDI la mainWindow PRIMA di mostrare la callWindow
-    if (mainWindow) mainWindow.hide();
-
     callWindow = new BrowserWindow({
       fullscreen: true,
       frame: false,         // Nessuna barra superiore
