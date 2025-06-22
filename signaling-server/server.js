@@ -100,21 +100,30 @@ wss.on('connection', ws => {
         user.available = false;
         user.roomId = data.room;
         console.log(`[ROOM] Dopo join: ${data.room} =`, rooms[data.room]);
-        // Invia la peer-list solo a chi ha joinato (mesh style)
-        const peers = getRoomPeers(data.room, user.name);
-        if (user.socket?.readyState === WebSocket.OPEN) {
-          user.socket.send(JSON.stringify({ type: 'peer-list', peers }));
-        }
+
+        // Costruisci nuova peer-list per la stanza (escludendo se stessi)
+        const roomUsers = rooms[data.room] || [];
+        roomUsers.forEach(uName => {
+          const u = getUserByName(uName);
+          if (u?.socket?.readyState === WebSocket.OPEN) {
+            const peers = roomUsers.filter(p => p !== uName);
+            u.socket.send(JSON.stringify({ type: 'peer-list', peers }));
+          }
+        });
+
         // Notifica agli altri peer in room (così sanno di dover creare connessione mesh)
+        const peers = getRoomPeers(data.room, user.name);
         peers.forEach(peerName => {
           const peer = getUserByName(peerName);
           if (peer?.socket?.readyState === WebSocket.OPEN) {
             peer.socket.send(JSON.stringify({ type: 'new-peer', name: user.name }));
           }
         });
+
         broadcastUserList();
         return;
       }
+
 
       // --- RELAY segnalazione WebRTC in mesh (offer, answer, ice) ---
       if (["offer", "answer", "ice"].includes(data.type)) {
