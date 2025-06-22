@@ -174,18 +174,22 @@ function setupWebSocket() {
         log('Sei stato invitato a una chiamata!', data);
       }
     }
-    
+
     if (data.type === 'participant-left') {
       log('Peer ha lasciato:', data.name);
       closePeer(data.name);
     }
-    
+
     if (data.type === 'call-rejected') {
-      // Mostra alert, chiudi tutto, blocca flussi, chiudi finestra
       alert(`${data.from} ha rifiutato la chiamata`);
-      // Se sei in una finestra Electron separata:
-      ipcRenderer.send('force-end-call');
-      // Se non hai la logica sopra, chiudi localStream, ferma peer, aggiorna UI come già fai in endCallBtn
+      
+      ws.send(JSON.stringify({ type: 'leave' }));
+      ws.close();
+      Object.keys(peerConnections).forEach(closePeer);
+      if (localStream) localStream.getTracks().forEach(track => track.stop());
+      ipcRenderer.send('ccall-rejected');
+      ipcRenderer.send('call-ended');
+      ipcRenderer.send('close-call-window');
     }
   };
 
