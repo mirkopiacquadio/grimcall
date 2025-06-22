@@ -10,6 +10,8 @@ let localStream;
 let peerConnections = {}; // { peerName: RTCPeerConnection }
 let remoteStreams = {};   // { peerName: MediaStream }
 let iceQueue = {};        // { peerName: [candidate, ...] }
+let latestUserList = [];
+let connectedPeers = new Set();
 
 const localVideo = document.getElementById('localVideo');
 const remoteVideos = document.getElementById('remoteVideos') || makeRemoteVideosContainer();
@@ -24,6 +26,32 @@ function log(...args) {
     ).join(' ');
   }
 }
+
+function updateConnectedPeers() {
+  connectedPeers = new Set(Object.keys(peerConnections));
+  connectedPeers.add(myName); // Considera anche se stesso come "connesso"
+}
+
+function filterAvailableOperators() {
+  // Solo operatori disponibili e NON già connessi
+  return latestUserList
+    .filter(u => u.available && u.name !== myName && !connectedPeers.has(u.name));
+}
+
+function handleUserList(data) {
+  if (Array.isArray(data.users)) {
+    latestUserList = data.users;
+    updateConnectedPeers();
+  }
+}
+
+window.requestAvailableUsersForDropdown = () => {
+  updateConnectedPeers();
+  const availableUsers = filterAvailableOperators().map(u => u.name);
+  window.setAvailableUsersForDropdown(availableUsers);
+}
+
+
 // Chiamata mesh: sempre a 2 di default, AUMENTA SOLO quando fai INVITE
 ipcRenderer.on('call-data', async (event, data) => {
   log('Received call-data', data);
@@ -88,6 +116,8 @@ function setupWebSocket() {
       return;
     }
     log('MSG', data);
+
+    if (data.type === 'userlist') handleUserList(data);
 
     // === SIGNALING ===
     if (data.type === 'peer-list') {
