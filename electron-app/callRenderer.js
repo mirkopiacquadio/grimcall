@@ -18,14 +18,14 @@ const remoteVideos = document.getElementById('remoteVideos') || makeRemoteVideos
 const callStatus = document.getElementById('callStatus');
 const endCallBtn = document.getElementById('endCallBtn');
 
-// function log(...args) {
+function log(...args) {
 //   console.log('[CALL]', ...args);
 //   if (callStatus) {
 //     callStatus.innerText = args.map(a =>
 //       typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
 //     ).join(' ');
 //   }
-// }
+}
 
 function updateConnectedPeers() {
   connectedPeers = new Set(Object.keys(peerConnections));
