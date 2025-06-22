@@ -4,7 +4,8 @@ let ws;
 let myName = '';
 let isOperator = false;
 let operatorList = [
-  'GRIM'
+  'GRIM 1',
+  'GRIM 2'
 ];
 let inactivityTimeout;
 const screensaver = document.getElementById("screensaver");
