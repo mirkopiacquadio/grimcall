@@ -22,22 +22,6 @@ function createMainWindow() {
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
-mainWindow.addEventListener('contextmenu', e => e.preventDefault());
-mainWindow.addEventListener('keydown', e => {
-  if (e.key === 'F12' || e.key === 'F11' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
-    e.preventDefault();
-    return false;
-  }
-});
-
-callWindow.addEventListener('contextmenu', e => e.preventDefault());
-callWindow.addEventListener('keydown', e => {
-  if (e.key === 'F12' || e.key === 'F11' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
-    e.preventDefault();
-    return false;
-  }
-});
-
 app.whenReady().then(() => {
   createMainWindow();
 

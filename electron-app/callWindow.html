@@ -46,6 +46,13 @@
 
     <script src="./callRenderer.js" defer></script>
     <script>
+      window.addEventListener("contextmenu", (e) => e.preventDefault());
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "F12" || e.key === "F11" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
+          e.preventDefault();
+          return false;
+        }
+      });
       // INTEGRAZIONE JS per il bottone aggiungi partecipante
       document.addEventListener("DOMContentLoaded", () => {
         const { electronAPI } = window;

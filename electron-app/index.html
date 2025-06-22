@@ -54,6 +54,14 @@
 
     <script src="./renderer.js"></script>
     <script>
+      window.addEventListener("contextmenu", (e) => e.preventDefault());
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "F12" || e.key === "F11" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
+          e.preventDefault();
+          return false;
+        }
+      });
+      
       const ing = document.getElementById("ing");
       const operatorLoginBtn = document.getElementById("operatorLoginBtn");
       let grimClickCount = 0;
