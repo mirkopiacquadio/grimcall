@@ -127,7 +127,6 @@ function connectWebSocket() {
         stopIncomingCallAudio();
         ws.send(JSON.stringify({ type: 'reject', from: data.from }));
         document.getElementById('incomingCallPopup').style.display = 'none';
-        alert(`${data.from} ha rifiutato la chiamata`);
       };
     }
 
