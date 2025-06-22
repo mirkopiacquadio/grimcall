@@ -185,7 +185,6 @@ function setupWebSocket() {
       ws.close();
       Object.keys(peerConnections).forEach(closePeer);
       if (localStream) localStream.getTracks().forEach(track => track.stop());
-      ipcRenderer.send('call-rejected');
       ipcRenderer.send('call-ended');
       ipcRenderer.send('close-call-window');
     }
