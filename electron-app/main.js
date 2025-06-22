@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut } = require('electron');
 const path = require('path');
 
 let mainWindow, callWindow;
@@ -6,8 +6,10 @@ let mainWindow, callWindow;
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     fullscreen: false,
-    kiosk: false,
-    frame: false,
+    frame: false,         // Nessuna barra superiore
+    kiosk: true,          // Modalità kiosk vera
+    fullscreen: true,     // (opzionale, per massima compatibilità)
+    alwaysOnTop: true,    // Non va mai dietro altre app
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,           // ✅ necessario per contextBridge
@@ -20,8 +22,22 @@ function createMainWindow() {
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
+window.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('keydown', e => {
+  if (e.key === 'F12' || e.key === 'F11' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+    e.preventDefault();
+    return false;
+  }
+});
+
 app.whenReady().then(() => {
   createMainWindow();
+
+  globalShortcut.register('Alt+F4', () => { /* NOP */ });
+  globalShortcut.register('CommandOrControl+W', () => { /* NOP */ });
+  globalShortcut.register('CommandOrControl+Q', () => { /* NOP */ });
+  globalShortcut.register('CommandOrControl+Shift+Esc', () => { /* NOP */ });
+  globalShortcut.register('F11', () => { /* NOP */ });
 
   ipcMain.on('call-data', (event, data) => {
     //createCallWindow(data);
@@ -35,6 +51,10 @@ app.whenReady().then(() => {
 
     callWindow = new BrowserWindow({
       fullscreen: true,
+      frame: false,         // Nessuna barra superiore
+      kiosk: true,          // Modalità kiosk vera
+      fullscreen: true,     // (opzionale, per massima compatibilità)
+      alwaysOnTop: true,    // Non va mai dietro altre app
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         contextIsolation: true,
