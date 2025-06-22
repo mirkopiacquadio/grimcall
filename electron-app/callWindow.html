@@ -19,12 +19,12 @@
         border: 1px solid #aaa;
         border-radius: 7px;
         z-index: 1000;
-         min-width: 180px; 
+        min-width: 180px;
       }
       #participantsDropdown button {
         width: 100%;
         border: none;
-        color: #fff; 
+        color: #fff;
         background: none;
         padding: 8px 15px;
         text-align: left;
@@ -59,6 +59,7 @@
         // Simula: window.availableUsers viene aggiornata da callRenderer.js (o altro, vedi nota sotto)
         window.setAvailableUsersForDropdown = (users) => {
           availableUsers = users || [];
+          console.log("[DROPDOWN] Available:", availableUsers);
         };
 
         addBtn.onclick = () => {

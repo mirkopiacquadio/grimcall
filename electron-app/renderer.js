@@ -112,6 +112,9 @@ function connectWebSocket() {
       document.getElementById('callerNameText').innerText = `${data.from} ti sta chiamando`;
 
       document.getElementById('acceptCallBtn').onclick = () => {
+        if (!isOperator) {
+          document.getElementById('addParticipantBtn').style.display = 'none';
+        }
         // 1. Apre la callWindow, anche qui serve passare la roomId
         ipcRenderer.send('open-call-window', { from: data.from, self: myName, roomId: data.room });
 
