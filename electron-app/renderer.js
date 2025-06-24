@@ -8,7 +8,7 @@ let operatorList = [
   'GRIM 2'
 ];
 let inactivityTimeout;
-const screensaver = document.getElementById("screensaver");
+// const screensaver = document.getElementById("screensaver");
 let isInCall = false;
 let currentRoomId = null;
 let incomingCallAudioLoopTimer = null;
@@ -22,7 +22,7 @@ ipcRenderer.on('call-ended', () => {
   else {
     loginAsOperator();
   }
-  resetInactivityTimer();
+  // resetInactivityTimer();
 });
 
 document.getElementById('operatorLoginBtn').onclick = () => {
@@ -36,19 +36,19 @@ document.getElementById('operatorLoginBtn').onclick = () => {
   }
 };
 
-function resetInactivityTimer() {
-  clearTimeout(inactivityTimeout);
-  if (!isInCall) {
-    screensaver.style.display = "none";
-    inactivityTimeout = setTimeout(() => {
-      screensaver.style.display = "block";
-    }, 100000);
-  }
-}
-['keydown', 'click', 'touchstart'].forEach(evt =>
-  window.addEventListener(evt, resetInactivityTimer)
-);
-resetInactivityTimer();
+// function resetInactivityTimer() {
+//   clearTimeout(inactivityTimeout);
+//   if (!isInCall) {
+//     screensaver.style.display = "none";
+//     inactivityTimeout = setTimeout(() => {
+//       screensaver.style.display = "block";
+//     }, 100000);
+//   }
+// }
+// ['keydown', 'click', 'touchstart'].forEach(evt =>
+//   window.addEventListener(evt, resetInactivityTimer)
+// );
+// resetInactivityTimer();
 
 function loginAsOperator() {
   const name = document.getElementById('operatorNameInput').value.trim();
