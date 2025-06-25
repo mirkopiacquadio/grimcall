@@ -96,6 +96,10 @@ async function setupLocalStream() {
   }
 }
 
+function hideCallStatus() {
+  if (callStatus) callStatus.style.display = 'none';
+}
+
 function setupWebSocket() {
   ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
   ws.onopen = () => {
@@ -103,10 +107,6 @@ function setupWebSocket() {
     ws.send(JSON.stringify({ type: 'login', name: myName }));
     ws.send(JSON.stringify({ type: 'join', name: myName, room: roomId }));
   };
-
-  function hideCallStatus() {
-    if (callStatus) callStatus.style.display = 'none';
-  }
 
   ws.onmessage = async (e) => {
     let data;
