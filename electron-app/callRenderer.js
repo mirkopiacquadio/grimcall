@@ -12,6 +12,7 @@ let remoteStreams = {};   // { peerName: MediaStream }
 let iceQueue = {};        // { peerName: [candidate, ...] }
 let latestUserList = [];
 let connectedPeers = new Set();
+let isCallStarted = false;
 
 const localVideo = document.getElementById('localVideo');
 const remoteVideos = document.getElementById('remoteVideos') || makeRemoteVideosContainer();
@@ -98,6 +99,7 @@ async function setupLocalStream() {
 
 function hideCallStatus() {
   if (callStatus) callStatus.style.display = 'none';
+  isCallStarted = true;
 }
 
 function setupWebSocket() {
@@ -120,7 +122,7 @@ function setupWebSocket() {
     log('MSG', data);
 
     if (data.type === 'userlist') handleUserList(data);
-    if (callStatus) {
+    if (callStatus && !isCallStarted) {
       callStatus.style.display = '';
       callStatus.innerText = "Sto chiamando l'operatore...";
     }
@@ -133,7 +135,6 @@ function setupWebSocket() {
           // Il nuovo utente fa OFFER verso ogni altro peer
           log('Connecting to peer (peer-list)', peer);
           await connectToPeer(peer, true);
-          hideCallStatus();
         }
       }
     }
@@ -142,7 +143,6 @@ function setupWebSocket() {
         // Tutti già presenti fanno OFFER verso il nuovo peer
         log('Connecting to peer (new-peer)', data.name);
         await connectToPeer(data.name, true);
-        hideCallStatus();
       }
     }
     if (data.type === 'offer') {
@@ -153,16 +153,13 @@ function setupWebSocket() {
         closePeer(data.from);
       }
       await connectToPeer(data.from, false, data.offer);
-      hideCallStatus();
     }
     if (data.type === 'answer') {
       log('Received answer from', data.from);
       try {
         await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
-        hideCallStatus();
       } catch (err) {
         log('setRemoteDescription (answer) failed:', err);
-        hideCallStatus();
       }
     }
     if (data.type === 'ice') {
@@ -268,9 +265,8 @@ async function connectToPeer(peerName, isOfferer, remoteOffer = null) {
       }
       v.srcObject = event.streams[0];
       v.play().catch(e => log("Video play error", e));
-
-      // AGGIUNGI QUESTO:
       updateRemoteVideosLayout();
+      hideCallStatus();
       log("[TRACK] Set remote video for", peerName, event.streams[0].id);
     }
   };
