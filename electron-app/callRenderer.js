@@ -19,12 +19,12 @@ const callStatus = document.getElementById('callStatus');
 const endCallBtn = document.getElementById('endCallBtn');
 
 function log(...args) {
-//   console.log('[CALL]', ...args);
-//   if (callStatus) {
-//     callStatus.innerText = args.map(a =>
-//       typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-//     ).join(' ');
-//   }
+  //   console.log('[CALL]', ...args);
+  //   if (callStatus) {
+  //     callStatus.innerText = args.map(a =>
+  //       typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+  //     ).join(' ');
+  //   }
 }
 
 function updateConnectedPeers() {
@@ -120,7 +120,7 @@ function setupWebSocket() {
       callStatus.style.display = '';
       callStatus.innerText = "Sto chiamando l'operatore...";
     }
-    
+
     // === SIGNALING ===
     if (data.type === 'peer-list') {
       // data.peers = array di nomi (escluso te stesso!)
@@ -185,6 +185,14 @@ function setupWebSocket() {
 
     if (data.type === 'call-rejected') {
       alert(`${data.from} ha rifiutato la chiamata`);
+      ws.send(JSON.stringify({ type: 'leave' }));
+      ws.close();
+      Object.keys(peerConnections).forEach(closePeer);
+      if (localStream) localStream.getTracks().forEach(track => track.stop());
+      ipcRenderer.send('call-ended');
+      ipcRenderer.send('close-call-window');
+    }
+    if (data.type === 'auto-leave') {
       ws.send(JSON.stringify({ type: 'leave' }));
       ws.close();
       Object.keys(peerConnections).forEach(closePeer);

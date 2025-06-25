@@ -147,7 +147,8 @@ wss.on('connection', ws => {
           user.available = true;
           delete user.roomId;
           // Notifica agli altri nella room
-          getRoomPeers(roomId).forEach(userName => {
+          const peers = getRoomPeers(roomId);
+          peers.forEach(userName => {
             const peer = getUserByName(userName);
             if (peer?.socket?.readyState === WebSocket.OPEN) {
               peer.socket.send(JSON.stringify({
@@ -157,6 +158,18 @@ wss.on('connection', ws => {
               }));
             }
           });
+          // PATCH: se nella room rimane solo 1, chiudilo
+          if (peers.length === 1) {
+            const last = getUserByName(peers[0]);
+            if (last && last.socket?.readyState === WebSocket.OPEN) {
+              last.socket.send(JSON.stringify({ type: 'auto-leave', reason: 'alone' }));
+              // Pulizia e aggiornamento user anche lato server
+              removeFromRoom(roomId, last.name);
+              last.inCall = false;
+              last.available = true;
+              delete last.roomId;
+            }
+          }
           broadcastUserList();
         }
         return;
