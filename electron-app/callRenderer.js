@@ -126,12 +126,6 @@ function setupWebSocket() {
       callStatus.innerText = "Sto chiamando l'operatore...";
     }
 
-    if (data.type === 'login-error') {
-      alert(data.message || "Errore di login");
-      ws.close();
-      return;
-    }
-
     // === SIGNALING ===
     if (data.type === 'peer-list') {
       // data.peers = array di nomi (escluso te stesso!)

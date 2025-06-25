@@ -46,22 +46,11 @@ wss.on('connection', ws => {
 
       // --- LOGIN ---
       if (data.type === 'login') {
-        // Cerca se la stessa utenza è già loggata (escludendo questa socket)
-        let existing = users.find(u => u.name === data.name && u.socket !== ws && u.socket.readyState === WebSocket.OPEN);
-
+        let existing = getUserByName(data.name);
         if (existing) {
-          // Rispondi SOLO al client che sta tentando di accedere con l'errore
-          ws.send(JSON.stringify({ type: 'login-error', message: 'Utenza già collegata' }));
-          ws.close();
-          return;
-        }
-
-        // Login normale
-        let user = getUserByName(data.name);
-        if (user) {
-          user.socket = ws;
-          user.available = true;
-          user.inCall = false;
+          existing.socket = ws;
+          existing.available = true;
+          existing.inCall = false;
         } else {
           users.push({ name: data.name, socket: ws, available: true, inCall: false });
         }
