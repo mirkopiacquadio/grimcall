@@ -133,17 +133,17 @@ function setupWebSocket() {
           // Il nuovo utente fa OFFER verso ogni altro peer
           log('Connecting to peer (peer-list)', peer);
           await connectToPeer(peer, true);
+          hideCallStatus();
         }
       }
-      hideCallStatus();
     }
     if (data.type === 'new-peer') {
       if (data.name !== myName && !peerConnections[data.name]) {
         // Tutti già presenti fanno OFFER verso il nuovo peer
         log('Connecting to peer (new-peer)', data.name);
         await connectToPeer(data.name, true);
+        hideCallStatus();
       }
-      hideCallStatus();
     }
     if (data.type === 'offer') {
       log('Received offer from', data.from);
@@ -159,10 +159,11 @@ function setupWebSocket() {
       log('Received answer from', data.from);
       try {
         await peerConnections[data.from]?.setRemoteDescription(new RTCSessionDescription(data.answer));
+        hideCallStatus();
       } catch (err) {
         log('setRemoteDescription (answer) failed:', err);
+        hideCallStatus();
       }
-      hideCallStatus();
     }
     if (data.type === 'ice') {
       const pc = peerConnections[data.from];
