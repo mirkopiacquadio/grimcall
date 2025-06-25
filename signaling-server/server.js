@@ -46,11 +46,22 @@ wss.on('connection', ws => {
 
       // --- LOGIN ---
       if (data.type === 'login') {
-        let existing = getUserByName(data.name);
+        // Cerca se la stessa utenza è già loggata (escludendo questa socket)
+        let existing = users.find(u => u.name === data.name && u.socket !== ws && u.socket.readyState === WebSocket.OPEN);
+
         if (existing) {
-          existing.socket = ws;
-          existing.available = true;
-          existing.inCall = false;
+          // Rispondi SOLO al client che sta tentando di accedere con l'errore
+          ws.send(JSON.stringify({ type: 'login-error', message: 'Utenza già collegata' }));
+          ws.close();
+          return;
+        }
+
+        // Login normale
+        let user = getUserByName(data.name);
+        if (user) {
+          user.socket = ws;
+          user.available = true;
+          user.inCall = false;
         } else {
           users.push({ name: data.name, socket: ws, available: true, inCall: false });
         }
@@ -123,7 +134,6 @@ wss.on('connection', ws => {
         broadcastUserList();
         return;
       }
-
 
       // --- RELAY segnalazione WebRTC in mesh (offer, answer, ice) ---
       if (["offer", "answer", "ice"].includes(data.type)) {
