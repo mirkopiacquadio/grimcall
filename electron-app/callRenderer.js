@@ -96,6 +96,10 @@ async function setupLocalStream() {
   }
 }
 
+function hideCallStatus() {
+  if (callStatus) callStatus.style.display = 'none';
+}
+
 function setupWebSocket() {
   ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
   ws.onopen = () => {
@@ -131,7 +135,7 @@ function setupWebSocket() {
           await connectToPeer(peer, true);
         }
       }
-      if (callStatus) callStatus.style.display = 'none';
+      hideCallStatus();
     }
     if (data.type === 'new-peer') {
       if (data.name !== myName && !peerConnections[data.name]) {
@@ -139,6 +143,7 @@ function setupWebSocket() {
         log('Connecting to peer (new-peer)', data.name);
         await connectToPeer(data.name, true);
       }
+      hideCallStatus();
     }
     if (data.type === 'offer') {
       log('Received offer from', data.from);
@@ -148,6 +153,7 @@ function setupWebSocket() {
         closePeer(data.from);
       }
       await connectToPeer(data.from, false, data.offer);
+      hideCallStatus();
     }
     if (data.type === 'answer') {
       log('Received answer from', data.from);
@@ -156,6 +162,7 @@ function setupWebSocket() {
       } catch (err) {
         log('setRemoteDescription (answer) failed:', err);
       }
+      hideCallStatus();
     }
     if (data.type === 'ice') {
       const pc = peerConnections[data.from];
