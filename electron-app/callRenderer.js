@@ -119,7 +119,6 @@ function setupWebSocket() {
       log("[WS] JSON error", err, e.data);
       return;
     }
-    log('MSG', data);
 
     if (data.type === 'userlist') handleUserList(data);
     if (callStatus && !isCallStarted) {
