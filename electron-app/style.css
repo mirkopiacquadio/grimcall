@@ -144,7 +144,7 @@ button:hover {
 
 .end-call-btn {
   position: absolute;
-  bottom: 30px;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%);
   background: red;
