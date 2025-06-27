@@ -262,3 +262,15 @@ button:hover {
 #participantsDropdown {
   z-index: 1000;
 }
+
+.app-footer-call {
+  background: #003366;
+  color: white;
+  padding: 20px 0;
+  text-align: center;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+}
