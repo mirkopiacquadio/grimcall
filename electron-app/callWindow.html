@@ -34,19 +34,12 @@
         background: #444;
       }
       .privacy-notice {
-        position: absolute;
-        left: 12px;
-        bottom: 12px;
-        right: 12px;
-        z-index: 1200; /* maggiore di tutto, ma non copre bottoni/alert */
-        background: rgba(20, 20, 20, 0.7);
         color: #fff;
         font-size: 6px;
         padding: 16px 18px 14px 18px;
         border-radius: 9px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
         pointer-events: none; /* così non blocca click! */
-        max-width: 680px;
         margin: 0 auto;
         text-align: left;
         line-height: 1.5;
@@ -54,16 +47,6 @@
     </style>
   </head>
   <body class="call-window">
-    <div id="privacyNotice" class="privacy-notice">
-      Gent.le Utente,
-      <br />
-      Attraverso il Totem verrà messo direttamente in contatto con un operatore tramite videochiamata. Procedendo, dunque, autorizza la videochiamata, la raccolta delle immagini ritraenti bollette, fatture, contratti e ogni altra documentazione si renda necessaria all'espletamento della richiesta.
-      <br />
-      Autorizza la raccolta dei dati inerenti il contratto fornitura del servizio idrico integrato (incluso stato dei pagamenti, servizi connessi, volture) e delle autoletture. Acconsente, inoltre, alla raccolta di immagini del suo documento di riconoscimento. La raccolta del documento di riconoscimento è necessaria ai fini della prosecuzione del
-      servizio richiesto.
-      <br />
-      Dichiaro di aver preso visione della informativa Privacy, resa ai sensi dell’artt.13 e 14 del REG.UE 2016/679 ed autorizzo il trattamento dei dati personali secondo le modalità indicate.
-    </div>
     <div class="call-status" id="callStatus">Sto chiamando l'operatore...</div>
 
     <video id="localVideo" autoplay muted playsinline class="local-video"></video>
@@ -71,6 +54,19 @@
     <button id="endCallBtn" class="end-call-btn">❌ Chiudi</button>
     <button id="addParticipantBtn" class="end-call-btn-1">➕ Aggiungi partecipante</button>
     <div id="participantsDropdown"></div>
+
+    <footer class="app-footer">
+      <div id="privacyNotice" class="privacy-notice">
+        Gent.le Utente,
+        <br />
+        Attraverso il Totem verrà messo direttamente in contatto con un operatore tramite videochiamata. Procedendo, dunque, autorizza la videochiamata, la raccolta delle immagini ritraenti bollette, fatture, contratti e ogni altra documentazione si renda necessaria all'espletamento della richiesta.
+        <br />
+        Autorizza la raccolta dei dati inerenti il contratto fornitura del servizio idrico integrato (incluso stato dei pagamenti, servizi connessi, volture) e delle autoletture. Acconsente, inoltre, alla raccolta di immagini del suo documento di riconoscimento. La raccolta del documento di riconoscimento è necessaria ai fini della prosecuzione del
+        servizio richiesto.
+        <br />
+        Dichiaro di aver preso visione della informativa Privacy, resa ai sensi dell’artt.13 e 14 del REG.UE 2016/679 ed autorizzo il trattamento dei dati personali secondo le modalità indicate.
+      </div>
+    </footer>
 
     <script src="./callRenderer.js" defer></script>
     <script>
