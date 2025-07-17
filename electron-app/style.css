@@ -112,7 +112,8 @@ button:hover {
   justify-content: stretch;
   align-items: stretch;
   gap: 0;
-  z-index: 1; /* Video remoti dietro */
+  z-index: 1;
+  /* Video remoti dietro */
 }
 
 .remote-video {
@@ -139,7 +140,8 @@ button:hover {
   border: 2px solid white;
   border-radius: 8px;
   object-fit: cover;
-  z-index: 10; /* Sopra i video remoti! */
+  z-index: 10;
+  /* Sopra i video remoti! */
 }
 
 .end-call-btn {
@@ -229,6 +231,15 @@ button:hover {
   font-size: 14px;
 }
 
+.privacy-notice {
+  color: #fff;
+  font-size: 10px;
+  pointer-events: none;
+  margin-bottom: 5px;
+  text-align: center;
+  line-height: 1.5;
+}
+
 .app-footer p {
   margin: 0;
 }
@@ -252,7 +263,8 @@ button:hover {
 
 .end-call-btn,
 .end-call-btn-1 {
-  z-index: 60; /* Sopra tutto! */
+  z-index: 60;
+  /* Sopra tutto! */
 }
 
 .call-status {
@@ -261,16 +273,4 @@ button:hover {
 
 #participantsDropdown {
   z-index: 1000;
-}
-
-.app-footer-call {
-  background: #003366;
-  color: white;
-  padding: 20px 0;
-  text-align: center;
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 1001;
 }
