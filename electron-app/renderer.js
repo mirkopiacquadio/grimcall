@@ -78,8 +78,8 @@ function logout() {
 }
 
 function connectWebSocket() {
-  ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
-  // ws = new WebSocket('ws://localhost:3000');
+  // ws = new WebSocket('wss://heroic-discrete-caribou.ngrok-free.app');
+  ws = new WebSocket('ws://81.28.10.87:3000');
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'login', name: myName }));
