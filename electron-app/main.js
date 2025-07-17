@@ -38,11 +38,10 @@ app.whenReady().then(() => {
     }
 
     callWindow = new BrowserWindow({
+      frame: false,
+      kiosk: true,
       fullscreen: true,
-      frame: false,         // Nessuna barra superiore
-      kiosk: true,          // Modalità kiosk vera
-      fullscreen: true,     // (opzionale, per massima compatibilità)
-      alwaysOnTop: true,    // Non va mai dietro altre app
+      skipTaskbar: true,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         contextIsolation: true,
@@ -54,17 +53,20 @@ app.whenReady().then(() => {
     callWindow.loadFile(path.join(__dirname, 'callWindow.html'));
     callWindow.webContents.once('did-finish-load', () => {
       callWindow.webContents.send('call-data', callData);
-       //callWindow.webContents.openDevTools();
+      //callWindow.webContents.openDevTools();
     });
 
     callWindow.on('closed', () => {
       callWindow = null;
-      // 2. RIMOSTRA la mainWindow e rimetti in kiosk
       if (mainWindow) {
+        mainWindow.setKiosk(false);
+        mainWindow.setFullScreen(false);
+        setTimeout(() => {
+          mainWindow.setKiosk(true);
+          mainWindow.setFullScreen(true);
+          mainWindow.focus();
+        }, 100);
         mainWindow.show();
-        mainWindow.setKiosk(true);
-        mainWindow.focus();
-        mainWindow.setFullScreen(true); // opzionale, aiuta su Windows
       }
       mainWindow?.webContents.send('call-ended');
     });
